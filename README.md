@@ -30,26 +30,26 @@
 
 ### 應用截圖
 
-**購物流程**
+**公開頁面**（無須登入）
 
 | 首頁 — 搜尋與排序 | 商品詳情 |
 |:---:|:---:|
 | [![首頁](docs/screenshots/home.png)](docs/screenshots/home.png) | [![商品詳情](docs/screenshots/product.png)](docs/screenshots/product.png) |
 | 關鍵字搜尋、三種排序、商品卡片網格 | 商品大圖、價格、數量選擇與加入購物車 |
 
-| 購物車 | Stripe 結帳 |
+| 購物車 | 聯絡我們 |
 |:---:|:---:|
-| [![購物車](docs/screenshots/cart.png)](docs/screenshots/cart.png) | [![結帳](docs/screenshots/checkout.png)](docs/screenshots/checkout.png) |
-| 數量調整、移除、即時小計 | Stripe 分離式卡片欄位（卡號／有效日期／CVC） |
+| [![購物車](docs/screenshots/cart.png)](docs/screenshots/cart.png) | [![聯絡我們](docs/screenshots/contact.png)](docs/screenshots/contact.png) |
+| 數量調整、移除、即時小計；未登入亦可加入商品 | 左側聯絡資訊依 Profile 注入，表單為公開端點且免 CSRF |
 
-**會員功能**
+**需登入**（`ProtectedRoute`）
 
-| 我的歷史訂單 | 個人檔案 | 聯絡我們 |
+| Stripe 結帳 | 我的歷史訂單 | 個人檔案 |
 |:---:|:---:|:---:|
-| [![歷史訂單](docs/screenshots/orders.png)](docs/screenshots/orders.png) | [![個人檔案](docs/screenshots/profile.png)](docs/screenshots/profile.png) | [![聯絡我們](docs/screenshots/contact.png)](docs/screenshots/contact.png) |
-| 訂單狀態、總價、日期與明細品項 | 個人資料與收件地址一站管理 | 聯絡資訊依 Profile 注入，表單免 CSRF |
+| [![結帳](docs/screenshots/checkout.png)](docs/screenshots/checkout.png) | [![歷史訂單](docs/screenshots/orders.png)](docs/screenshots/orders.png) | [![個人檔案](docs/screenshots/profile.png)](docs/screenshots/profile.png) |
+| 分離式卡片欄位（卡號／有效日期／CVC） | 訂單狀態、總價、日期與明細品項 | 個人資料與收件地址一站管理 |
 
-**管理後台（ADMIN）**
+**管理後台**（需登入，ADMIN 權限由後端強制）
 
 | 訂單管理 | 信息管理 |
 |:---:|:---:|
