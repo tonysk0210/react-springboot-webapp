@@ -10,12 +10,8 @@ import org.springframework.security.authentication.ProviderManager;
 import org.springframework.security.authentication.password.CompromisedPasswordChecker;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.core.userdetails.User;
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.password.HaveIBeenPwnedRestApiPasswordChecker;
 import org.springframework.security.web.authentication.www.BasicAuthenticationFilter;
@@ -118,38 +114,23 @@ public class MySecurityConfig {
         return source;
     }
 
-    // UserDetailsService = 用於從資料庫或記憶體中取得使用者資料。注意：目前專案的實際登入流程是走 MyAuthenticationProvider，這個 bean 不參與現行登入驗證。
-    @Bean
-    public UserDetailsService userDetailsService(PasswordEncoder passwordEncoder) {
-        UserDetails user = User.builder()
-                .username("user")
-                .password(passwordEncoder.encode("user"))
-                .roles("USER").build(); // 把原始密碼 user 先經過 passwordEncoder 編碼後再保存。
-        UserDetails admin = User.builder()
-                .username("admin")
-                .password("$2a$12$L51S8Z2JvzSN.pKQSXOgBOa6Iol5R5.dlOpFEkYO8i/J6UufT4TAa") // 把一串已經編碼好的 BCrypt 密碼寫進去。original t ext: admin
-                .roles("USER", "ADMIN").build();
-        return new InMemoryUserDetailsManager(user, admin); // 使用者資料只存在記憶體裡
-    }
-
     // PasswordEncoder = 當 Spring Security 系統需要 PasswordEncoder 時，請使用 BCryptPasswordEncoder (會直接影響{noop}造成衝突: Encoded password does not look like BCrypt)
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
 
-    // AuthenticationManager = 當 AuthController 呼叫 authenticate() 時，使用 ProviderManager 調度自訂的 MyAuthenticationProvider。
+    /*
+     * AuthenticationManager = 當 AuthController 呼叫 authenticate() 時，使用 ProviderManager 調度自訂的 MyAuthenticationProvider。
+     *
+     * 註：本專案不註冊 UserDetailsService bean。
+     * 帳號驗證一律由 MyAuthenticationProvider 直接查詢 CUSTOMERS 資料表完成，
+     * 若同時存在 UserDetailsService bean，Spring Security 7 會在啟動時發出
+     * InitializeUserDetailsManagerConfigurer 警告（兩者擇一即可）。
+     */
     @Bean
-    public AuthenticationManager authenticationManager(UserDetailsService userDetailsService, PasswordEncoder passwordEncoder, MyAuthenticationProvider myAuthenticationProvider) {
-
-        /*// 0. 提供一個 DaoAuthenticationProvider 來處理帳密登入的驗證流程
-        var daoAuthenticationProvider = new DaoAuthenticationProvider(); // 1. 負責 username/password 登入驗證流程
-        daoAuthenticationProvider.setUserDetailsService(userDetailsService); // 2. 指定它要透過哪個 UserDetailsService 取得使用者資料
-        daoAuthenticationProvider.setPasswordEncoder(passwordEncoder); // 3. 指定它要用哪個 PasswordEncoder 比對密碼*/
-
-        // 1. 建立一個 AuthenticationManager，套用 MyAuthenticationProvider 來驗證登入。
-        var providerManager = new ProviderManager(myAuthenticationProvider); // 這個 AuthenticationManager 調度員會使用 MyAuthenticationProvider 驗證帳號密碼。
-        return providerManager;
+    public AuthenticationManager authenticationManager(MyAuthenticationProvider myAuthenticationProvider) {
+        return new ProviderManager(myAuthenticationProvider);
     }
 
     // 檢查密碼是否在「被竊取的密碼清單」裡面

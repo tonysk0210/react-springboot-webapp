@@ -1,14 +1,14 @@
 # StickerStore — 生產級全端電商系統
 
 ![React](https://img.shields.io/badge/React-19.2-61DAFB?logo=react&logoColor=white)
-![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.5.14-6DB33F?logo=springboot&logoColor=white)
+![Spring Boot](https://img.shields.io/badge/Spring%20Boot-4.1.1-6DB33F?logo=springboot&logoColor=white)
 ![Java](https://img.shields.io/badge/Java-25-ED8B00?logo=openjdk&logoColor=white)
 ![Vite](https://img.shields.io/badge/Vite-8.0-646CFF?logo=vite&logoColor=white)
 ![Redux Toolkit](https://img.shields.io/badge/Redux%20Toolkit-2.12-764ABC?logo=redux&logoColor=white)
 ![Stripe](https://img.shields.io/badge/Stripe-32.1-635BFF?logo=stripe&logoColor=white)
-![Spring Security](https://img.shields.io/badge/Spring%20Security-6-6DB33F?logo=springsecurity&logoColor=white)
+![Spring Security](https://img.shields.io/badge/Spring%20Security-7.1.0-6DB33F?logo=springsecurity&logoColor=white)
 
-> **React 19 × Spring Boot 3** 打造的完整電商解決方案 — 從前端互動體驗、Stripe 金流整合，到後端安全架構與多環境部署，每一層都按業界標準設計。
+> **React 19 × Spring Boot 4** 打造的完整電商解決方案 — 從前端互動體驗、Stripe 金流整合，到後端安全架構與多環境部署，每一層都按業界標準設計。
 
 一套從零架構、可直接上線的貼紙電商系統。本專案貫穿全端工程的核心議題：**JWT 無狀態認證**、**Cookie-based CSRF 雙重防護**、**React Router Data API 資料流設計**、**Redux 與 Context 的狀態管理分工**，以及針對生產環境的多 Profile 配置與快取策略。
 
@@ -615,21 +615,88 @@ public abstract class BaseEntity {
 
 | 技術 | 版本 | 用途 | 選用理由 |
 |------|------|------|----------|
-| **Spring Boot** | 3.5.14 | 應用框架 | 自動配置降低設定成本，與 Spring 生態系深度整合（Security、Data JPA、Actuator） |
+| **Spring Boot** | 4.1.1 | 應用框架 | 自動配置降低設定成本，與 Spring 生態系深度整合（Security、Data JPA、Actuator） |
+| **Spring Framework** | 7.0.9 | 核心容器 | 由 Boot 4.1.1 管理，基線為 Jakarta EE 11 |
 | **Java** | 25 | 執行環境 | 採用最新語法特性，Record class 用於 DTO 大幅簡化程式碼 |
-| **Spring Security** | 6 | 認證與授權 | Filter Chain 架構提供細粒度的安全控制，與 Spring Boot 整合零配置 |
+| **Spring Security** | 7.1.0 | 認證與授權 | Filter Chain 架構提供細粒度的安全控制；**以 `<spring-security.version>` 明確覆寫**，Boot 4.1.1 原生搭配為 7.1.1 |
 | **JJWT** | 0.13.0 | JWT 處理 | 業界標準 JWT 函式庫，支援 HMAC-SHA256 簽名與 Claims 解析 |
-| **Spring Data JPA** | — | ORM | Repository 介面自動生成 CRUD，搭配 JPA Auditing 實現稽核紀錄 |
-| **H2** | — | 開發資料庫 | 嵌入式資料庫（本專案用 file-based），無需安裝即可啟動，並附帶 Web Console |
-| **MySQL** | — | 生產資料庫 | Production profile 切換至 MySQL，透過環境變數注入連線設定 |
-| **Caffeine** | — | 記憶體快取 | JVM 本地快取，商品列表 TTL 30 分鐘，角色清單 TTL 1 天，避免頻繁查詢 DB |
+| **Jackson** | 3.1.5 | JSON 序列化 | Boot 4 預設改用 `tools.jackson`；另保留 Jackson 2（2.21.5）供 jjwt 使用，詳見下方說明 |
+| **Spring Data JPA / Hibernate** | 7.4.5 | ORM | Repository 介面自動生成 CRUD，搭配 JPA Auditing 實現稽核紀錄 |
+| **H2** | 2.4.240 | 開發資料庫 | 嵌入式資料庫（本專案用 file-based），無需安裝即可啟動 |
+| **MySQL Connector/J** | 9.7.0 | 生產資料庫 | Production profile 切換至 MySQL，透過環境變數注入連線設定 |
+| **Caffeine** | 3.2.4 | 記憶體快取 | JVM 本地快取，商品列表 TTL 30 分鐘，角色清單 TTL 1 天，避免頻繁查詢 DB |
+| **Tomcat** | 11.0.24 | 內嵌容器 | 由 Boot 4 管理，對應 Jakarta Servlet 6.1 |
 | **Stripe Java SDK** | 32.1.0 | 支付處理 | 官方 SDK，後端僅建立 PaymentIntent 並回傳 clientSecret，不接觸卡號資料 |
-| **SpringDoc OpenAPI** | 2.8.17 | API 文件 | 自動從 Controller 程式碼產生 Swagger UI，ADMIN 角色限制存取 |
+| **SpringDoc OpenAPI** | 3.1.1 | API 文件 | 3.x 才支援 Boot 4 / Framework 7（2.x 僅支援 Boot 3） |
 | **Bean Validation** | — | 輸入驗證 | `@Valid` / `@Validated` 宣告式驗證，錯誤由 GlobalExceptionHandler 統一格式化 |
 | **Lombok** | — | 樣板碼消除 | `@RequiredArgsConstructor` 產生建構子注入，`@Data`、`@Builder` 等減少重複程式碼 |
 | **Spring Boot Actuator** | — | 健康檢查 | `/actuator/health` 公開，其餘路徑限 ADMIN，適用於 K8s liveness probe |
 | **Spring Boot DevTools** | — | 開發體驗 | 程式碼變更自動重啟，縮短回饋循環 |
 | **Maven** | 3.9+ | 建構工具 | 成熟穩定的依賴管理，內附 Maven Wrapper (`mvnw`) 免安裝 |
+
+### Spring Boot 4 升級注意事項
+
+本專案已由 Spring Boot 3.5.14 升級至 4.1.1，以下為升級過程中需要處理、且會影響後續維護的幾點。
+
+**1. Jackson 3 與 jjwt 的相依衝突**
+
+Boot 4 預設改用 Jackson 3（套件名為 `tools.jackson`），不再提供 Jackson 2。但 `jjwt-jackson` 0.13.0（目前最新版）仍相依 Jackson 2 的 `com.fasterxml.jackson.core:jackson-databind`，缺少時**簽發 JWT 會在執行期拋 `NoClassDefFoundError`**。
+
+所幸 Boot 4 的 BOM 仍同時管理 Jackson 2（`jackson-2-bom` 2.21.5），因此 `pom.xml` 只需補上免版本號的相依即可：
+
+```xml
+<dependency>
+    <groupId>com.fasterxml.jackson.core</groupId>
+    <artifactId>jackson-databind</artifactId>
+    <scope>runtime</scope>
+</dependency>
+```
+
+待 jjwt 推出支援 Jackson 3 的版本後即可移除。
+
+**2. JSON 欄位順序改變（行為變更）**
+
+Jackson 3 會將 `@Data` 等一般 POJO 的欄位以**字母順序**輸出，Java Record 則維持宣告順序。例如 `UserDto`：
+
+```jsonc
+// Boot 3 / Jackson 2
+{ "id": 1, "name": "Admin", "email": "...", "address": { ... } }
+
+// Boot 4 / Jackson 3
+{ "address": { ... }, "email": "...", "id": 1, "name": "Admin" }
+```
+
+前端以具名解構（`const { message, user, jwtToken } = response.data`）取值，不依賴欄位順序，因此不受影響。若有外部串接方對順序有假設，需另行確認。
+
+**3. Spring Security 版本覆寫**
+
+Boot 4.1.1 原生搭配 Spring Security 7.1.1，本專案在 `pom.xml` 明確覆寫為 7.1.0：
+
+```xml
+<spring-security.version>7.1.0</spring-security.version>
+```
+
+移除該屬性即可回到 Boot 原生管理的 7.1.1。
+
+**4. 隨升級一併清理的項目**
+
+| 項目 | 原因 |
+|------|------|
+| 移除 `MySecurityConfig` 的 `userDetailsService` 記憶體 bean | Security 7 啟動時警告其與 `MyAuthenticationProvider` 衝突；該 bean 原本即未參與登入驗證，屬死碼 |
+| 移除 `spring.jpa.database-platform` | Hibernate 7 會依 JDBC 連線自動判斷方言，明確指定會觸發 `HHH90000025` deprecation 警告 |
+| Caffeine 快取加上 `recordStats()` | 未開啟時 Actuator 僅能取得 `cache.size`，並於啟動時發出警告 |
+| prod profile 關閉 springdoc 端點 | springdoc 3 預設開啟 `/v3/api-docs` 與 `/swagger-ui.html` |
+
+**5. 尚未處理：`spring.jpa.open-in-view`**
+
+啟動時仍會出現 OSIV 警告。實測關閉後（`--spring.jpa.open-in-view=false`），`/api/v1/orders` 與 `/api/v1/admin/orderManage` 會直接回 500：
+
+```
+Cannot lazily initialize collection of role
+'com.example.backend.entity.Order.orderItems' - no session
+```
+
+原因是 `Order.orderItems` 為 LAZY 關聯，而 service / controller 層**完全沒有 `@Transactional`**，DTO 組裝發生在交易之外。要關閉 OSIV 必須先補上交易邊界或改用 fetch join，屬獨立的重構工作，故本次維持預設值（啟用）。
 
 ---
 
@@ -733,7 +800,7 @@ curl -s http://localhost:8080/api/v1/products
 ```bash
 # 以 H2 內附的 Shell 查詢（jar 位於本機 Maven repository）
 cd backend
-java -cp ~/.m2/repository/com/h2database/h2/2.2.224/h2-2.2.224.jar org.h2.tools.Shell \
+java -cp ~/.m2/repository/com/h2database/h2/2.4.240/h2-2.4.240.jar org.h2.tools.Shell \
   -url "jdbc:h2:file:./h2db/myDb;AUTO_SERVER=TRUE" -user sa -password "" \
   -sql "SELECT COUNT(*) FROM products;"
 ```
@@ -825,6 +892,7 @@ npm run lint            # ESLint 檢查
 - [ ] **CORS 來源** — `application-prod.properties` 未覆寫 `stickerstore.cors.allowed-origins`，須補上生產域名
 - [ ] **Actuator 暴露範圍** — 預設 `management.endpoints.web.exposure.include=*` 且 `env` / `configprops` 顯示實際值；雖已由 ADMIN 角色保護，生產環境建議收斂為必要端點
 - [ ] **H2 Console** — `application-prod.properties` 已設為 `false`，確認生效
+- [x] **API 文件端點** — Boot 4 升級時已於 prod profile 加入 `springdoc.api-docs.enabled=false` 與 `springdoc.swagger-ui.enabled=false`
 - [ ] **資料庫憑證** — prod profile 的 `DATABASE_USERNAME` / `DATABASE_PASSWORD` 預設值為 `root`/`root`，務必覆寫
 
 ---
@@ -999,11 +1067,13 @@ npm run lint            # ESLint 檢查
 
 ### Spring Profiles 對照
 
-| Profile | 資料庫 | SQL 初始化 | Log Level | SQL 輸出 | H2 Console |
-|---------|--------|-----------|-----------|---------|-----------|
-| `default` | H2 file-based (`./h2db/myDb`) | 自動執行 schema.sql + data.sql | INFO | 顯示並格式化 | 啟用 |
-| `qa` | H2 | 自動執行 | WARN | 關閉 | 啟用 |
-| `prod` | MySQL（環境變數注入） | `never`（不執行） | ERROR | 關閉 | 停用 |
+| Profile | 資料庫 | SQL 初始化 | Log Level | SQL 輸出 | H2 Console | springdoc |
+|---------|--------|-----------|-----------|---------|-----------|-----------|
+| `default` | H2 file-based (`./h2db/myDb`) | 自動執行 schema.sql + data.sql | INFO | 顯示並格式化 | 啟用 | 啟用 |
+| `qa` | H2 | 自動執行 | WARN | 關閉 | 啟用 | 啟用 |
+| `prod` | MySQL（環境變數注入） | `never`（不執行） | ERROR | 關閉 | 停用 | 停用 |
+
+資料庫方言（`spring.jpa.database-platform`）已於 Boot 4 升級時移除，改由 Hibernate 7 依 JDBC 連線自動判斷。
 
 各 Profile 另綁定不同的聯絡資訊（`contact.phone` / `contact.email` / `contact.address`），由 `ContactInfoDto` 經 `@ConfigurationProperties` 注入，供 `GET /api/v1/contacts` 回傳。
 
@@ -1022,6 +1092,8 @@ npm run lint            # ESLint 檢查
 | **`formLogin` / `httpBasic` 為無效設定** | `MySecurityConfig` 有啟用，但永遠不會被觸發（同上原因） | 移除以免誤導，或調整 filter 順序讓其真正生效 |
 | **JWT 效期偏短** | 20 分鐘，且無 refresh token 機制，閒置後需重新登入 | 導入 refresh token，或延長效期並加上滑動續期 |
 | **JWT 未帶 `customerId`** | 以 `email` 作為 principal，每次請求需依 email 反查使用者 | 於 claims 加入 `customerId`，減少查詢 |
+| **無交易邊界，OSIV 無法關閉** | service / controller 層無任何 `@Transactional`，`spring.jpa.open-in-view` 一旦關閉，`/orders` 與 `/admin/orderManage` 即因 LAZY 關聯回 500（已實測） | 為查詢方法補 `@Transactional(readOnly = true)` 或改用 fetch join，之後即可關閉 OSIV |
+| **jjwt 仍相依 Jackson 2** | Boot 4 已改用 Jackson 3，但 `jjwt-jackson` 0.13.0 仍需 Jackson 2，故 `pom.xml` 額外保留 `jackson-databind`（2.21.5） | 待 jjwt 發布支援 Jackson 3 的版本後移除該相依 |
 | **`.env.localhost`** | `npm run build:localhost` 指定 `--mode localhost` 但無對應檔案，實際回退至 `.env` | 補上 `.env.localhost` 或移除該 script |
 | **授權條款** | 無 LICENSE 檔 | 視用途補上 MIT 或其他授權 |
 

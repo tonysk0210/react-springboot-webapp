@@ -18,10 +18,13 @@ public class CaffeineCacheConfig {
     @Bean
     public CacheManager caffeineCacheManager() {
         // 1. 建立 products Cache
+        // recordStats()：讓 Actuator / Micrometer 能輸出命中率等快取指標，
+        // 未開啟時啟動階段會出現 CaffeineCacheMetrics 警告，且僅能取得 cache.size。
         CaffeineCache productsCache = new CaffeineCache("products",
                 Caffeine.newBuilder()
                         .expireAfterWrite(30, TimeUnit.MINUTES)
                         .maximumSize(1000) // 限制此 cache 最多保留 1000 個 cache entries；目前 getProducts() 無參數，通常只會使用其中 1 個 entry
+                        .recordStats()
                         .build());
 
         // 2. 建立 roles Cache
@@ -29,6 +32,7 @@ public class CaffeineCacheConfig {
                 Caffeine.newBuilder()
                         .expireAfterWrite(1, TimeUnit.DAYS)
                         .maximumSize(10)
+                        .recordStats()
                         .build());
 
         // 3. 將 productsCache 與 rolesCache 加入 CacheManager
