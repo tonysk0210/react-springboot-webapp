@@ -100,7 +100,7 @@ sequenceDiagram
     alt 密碼正確
         P-->>M: Authentication（principal = Customer）
         M-->>A: Authentication
-        A->>A: 組裝 UserDto<br/>roles 併為逗號字串、附掛 address
+        A->>A: 組裝 UserDto<br/>BeanUtils 複製 id/name/email/mobileNumber<br/>roles 併為逗號字串；address 另轉 AddressDto（無則略過）
         A->>J: generateJwtToken(authentication)
         J-->>A: JWT（HMAC-SHA256，20 分鐘效期）
         A-->>F: 200 { message, user, jwtToken }
