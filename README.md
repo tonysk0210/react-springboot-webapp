@@ -56,8 +56,6 @@
 | [![訂單管理](docs/screenshots/orderManage.png)](docs/screenshots/orderManage.png) | [![信息管理](docs/screenshots/messages.png)](docs/screenshots/messages.png) |
 | 待處理訂單一鍵成立或取消 | 客服留言集中處理、標記已讀並關閉 |
 
-> 截圖規格與重拍方式請見 [`docs/screenshots/README.md`](docs/screenshots/README.md)。
-
 ### 使用者旅程
 
 ```mermaid

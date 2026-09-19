@@ -1092,3 +1092,6 @@ Identify and stop the process that's listening on port 8080 or configure this ap
 2026-09-20T02:18:06.983+08:00  INFO 26488 --- [backend] [http-nio-8081-exec-1] o.s.web.servlet.DispatcherServlet        : Initializing Servlet 'dispatcherServlet'
 2026-09-20T02:18:06.984+08:00  INFO 26488 --- [backend] [http-nio-8081-exec-1] o.s.web.servlet.DispatcherServlet        : Completed initialization in 1 ms
 2026-09-20T02:18:09.240+08:00  INFO 26488 --- [backend] [http-nio-8081-exec-7] o.springdoc.api.AbstractOpenApiResource  : Init duration for springdoc-openapi is: 400 ms
+2026-09-20T02:57:26.944+08:00  WARN 3296 --- [backend] [main] JpaBaseConfiguration$JpaWebConfiguration : spring.jpa.open-in-view is enabled by default. Therefore, database queries may be performed during view rendering. Explicitly configure spring.jpa.open-in-view to disable this warning
+2026-09-20T02:57:29.443+08:00  WARN 3296 --- [backend] [main] o.s.core.events.SpringDocAppInitializer  : SpringDoc /v3/api-docs endpoint is enabled by default. To disable it in production, set the property 'springdoc.api-docs.enabled=false'
+2026-09-20T02:57:29.444+08:00  WARN 3296 --- [backend] [main] o.s.core.events.SpringDocAppInitializer  : SpringDoc /swagger-ui.html endpoint is enabled by default. To disable it in production, set the property 'springdoc.swagger-ui.enabled=false'

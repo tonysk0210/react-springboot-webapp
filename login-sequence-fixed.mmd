@@ -1,0 +1,36 @@
+sequenceDiagram
+    participant U as 使用者
+    participant F as React 前端<br/>(apiClient)
+    participant C as CsrfController
+    participant A as AuthController
+    participant M as AuthenticationManager<br/>(ProviderManager)
+    participant P as MyAuthenticationProvider
+    participant J as JwtUtil
+    participant DB as 資料庫
+
+    U->>F: 輸入 email + 密碼
+    opt 尚無 XSRF-TOKEN cookie
+        F->>C: GET /api/v1/csrf-token
+        C-->>F: Set-Cookie: XSRF-TOKEN
+    end
+    F->>A: POST /api/v1/auth/login<br/>{ userName, password } + X-XSRF-TOKEN
+    A->>M: authenticate(UsernamePasswordAuthenticationToken)
+    M->>P: authenticate()
+    P->>DB: findByEmail(userName)
+    DB-->>P: Customer + Roles
+    P->>P: BCrypt.matches(密碼, password_hash)
+    alt 密碼正確
+        P-->>M: Authentication（principal = Customer）
+        M-->>A: Authentication
+        A->>A: 組裝 UserDto<br/>roles 併為逗號字串、附掛 address
+        A->>J: generateJwtToken(authentication)
+        J-->>A: JWT（HMAC-SHA256，20 分鐘效期）
+        A-->>F: 200 { message, user, jwtToken }
+        F->>F: 寫入 localStorage（jwtToken、user）
+    else 密碼錯誤 / 查無使用者
+        P-->>M: BadCredentialsException<br/>UsernameNotFoundException
+        M-->>A: AuthenticationException
+        A-->>F: 401 { message, null, null }
+    end
+
+    Note over F,A: 後續請求皆帶 Authorization 標頭（Bearer token）<br/>由 JWTTokenValidatorFilter 驗證
