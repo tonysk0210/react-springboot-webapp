@@ -352,7 +352,42 @@ erDiagram
     }
 ```
 
-所有資料表均繼承 `BaseEntity` 的四個稽核欄位：`created_at`、`updated_at`、`created_by`、`updated_by`。
+#### 資料層重點
+
+- 開發環境使用 **H2 file-based**（`jdbc:h2:file:./h2db/myDb;AUTO_SERVER=true`），**資料會跨重啟保留** —— 與記憶體模式不同，devtools 熱重載或重新啟動都不會清空，手動建立的測試資料會一直累積。想重置就直接刪掉 `backend/h2db/` 整個目錄，下次啟動會依 `schema.sql` + `data.sql` 重建
+- `AUTO_SERVER=true` 允許**應用程式執行中**同時由外部工具連線同一個檔案資料庫（IntelliJ Database、DBeaver、H2 Shell 皆可）。這是目前查資料的主要手段 —— `/h2-console` 因 JWT filter 與 `X-Frame-Options: DENY` 實際上無法從瀏覽器開啟，詳見[此節](#h2-console-與-swagger-ui-的實際存取方式)
+- ⚠️ **`spring.jpa.hibernate.ddl-auto` 完全沒有設定**，且 file-based H2 不被 Spring Boot 視為 embedded，因此實際值為 **`none`** —— Hibernate **既不建表也不驗證**（啟動日誌零 DDL、資料自 2026-06-15 留存至今可佐證）。這代表 `sql/schema.sql` 是 schema 的唯一真相，而 **Entity 與 schema 不一致時不會在啟動時報錯**，要等到實際查詢該欄位才會炸出 SQL 例外。改欄位時務必同步修改 `sql/schema.sql` 與 `entity/` 底下的標註；若希望啟動即攔截，可自行加上 `spring.jpa.hibernate.ddl-auto=validate`
+- 初始資料 `sql/data.sql` 全部使用 **H2 專屬的 `MERGE INTO ... KEY(...)`**（共 35 條）達成冪等 upsert，重複啟動不會產生重複資料。⚠️ **這個語法在 MySQL 上不成立** —— prod profile 設定 `spring.sql.init.mode=never` 迴避了這點，所以**正式環境的 schema 與種子資料必須另行建置**，不能指望這兩個檔案
+- 種子資料內容：30 筆商品、3 個角色（`ROLE_ADMIN` / `ROLE_USER` / `ROLE_OP`）、1 個管理員（`admin@gmail.com`）、2 則示範留言。⚠️ `ROLE_OP` 已寫入且指派給管理員，但 `MySecurityConfig` 的授權規則**從未使用它**，屬預留角色
+- 所有 Entity 繼承 `entity/BaseEntity` 的四個稽核欄位（`Instant createdAt` / `updatedAt`、`String createdBy` / `updatedBy`），由 `@EnableJpaAuditing` + `config/AuditorAwareImpl` 自動填入。未登入時 auditor 回傳的是 **`"SYSTEM"`**；已登入時取 `Customer.email`。註冊這類未登入寫入流程即靠此機制才不會因 `created_by` 為 null 而失敗
+
+**Fetch 策略**（決定一次查詢會連帶撈出多少資料）
+
+| 關聯 | Fetch | 來源 |
+|------|-------|------|
+| `Customer.roles` → `Role` | **EAGER** | 明示；經 `customer_roles` 中介表 |
+| `Customer.address` → `Address` | **EAGER** | `@OneToOne` 未指定，採預設值 |
+| `Address.customer` | LAZY | 明示；owning side（FK 在 `ADDRESS`） |
+| `Order.customer` | LAZY | 明示 |
+| `Order.orderItems` → `OrderItem` | **LAZY** | `@OneToMany` 未指定，採預設值 |
+| `OrderItem.order` / `.product` | LAZY | 明示 |
+| `Role.customers` | LAZY | `@ManyToMany(mappedBy)` 預設 |
+
+- 載入一個 `Customer` 會**連帶發出 roles 與 address 的查詢**（兩者皆 EAGER），登入流程因此會有數筆 SQL。目前資料量下無妨，但若日後 `Customer` 出現在列表查詢中需留意 N+1
+- ⚠️ **`spring.jpa.open-in-view` 目前為預設的 `true`，不要為了消掉啟動 WARN 就把它關掉。** service 與 controller 層**完全沒有任何 `@Transactional`**，`Order.orderItems` 又是 LAZY，DTO 組裝發生在交易之外。實測以 `--spring.jpa.open-in-view=false` 啟動後，`/api/v1/orders` 與 `/api/v1/admin/orderManage` 直接回 500：
+
+  ```
+  Cannot lazily initialize collection of role
+  'com.example.backend.entity.Order.orderItems' - no session
+  ```
+
+  真要關閉，必須先為查詢方法補上 `@Transactional(readOnly = true)` 或改用 fetch join / `@EntityGraph`
+
+- ⚠️ `ORDERS.customer_id` 的外鍵**沒有 `ON DELETE CASCADE`**（`ADDRESS` 與 `CUSTOMER_ROLES` 兩者皆有）。因此刪除一個已有訂單的客戶會在資料庫層被擋下，即使 `Customer.address` 標了 `cascade = ALL` 也一樣
+- `ORDER_ITEMS.price` 儲存的是**下單當下的單價快照**，與 `PRODUCTS.price` 解耦 —— 日後調整商品售價不會回頭改寫歷史訂單金額
+- ⚠️ 商品列表掛了 `@Cacheable("products")`，TTL 30 分鐘。**直接改資料庫的商品資料後，最長需等 30 分鐘前端才會看到變化**；開發時要立即生效請重啟應用程式
+- 主鍵一律 `@GeneratedValue(strategy = IDENTITY)` 搭配 schema 的 `BIGINT AUTO_INCREMENT`。`data.sql` 雖然明寫了 `customer_id = 1`、`role_id = 1~3`，H2 會自動推進識別序列，實測後續註冊的帳號取得 id 2~7，**不會發生主鍵衝突**
+- `entity/Role.java` 第 28–32 行保留了一段**已註解的 `@ManyToOne Customer customer`**（舊的一對多設計）。`ROLES` 表並無 `customer_id` 欄位，若誤將其解除註解，該關聯會在查詢時失敗
 
 ---
 
