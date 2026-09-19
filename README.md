@@ -6,6 +6,7 @@
 ![Spring Security](https://img.shields.io/badge/Spring%20Security-7.1.0-6DB33F?logo=springsecurity&logoColor=white)
 ![Vite](https://img.shields.io/badge/Vite-8.0-646CFF?logo=vite&logoColor=white)
 ![Redux Toolkit](https://img.shields.io/badge/Redux%20Toolkit-2.12-764ABC?logo=redux&logoColor=white)
+![Axios](https://img.shields.io/badge/Axios-1.15-5A29E4?logo=axios&logoColor=white)
 ![Stripe](https://img.shields.io/badge/Stripe-32.1-635BFF?logo=stripe&logoColor=white)
 
 
@@ -195,8 +196,6 @@ flowchart TB
 - CORS 允許來源由 `stickerstore.cors.allowed-origins` 屬性控制，預設 `http://localhost:5173,http://localhost:8080`
 - 前端以 Vite 多環境 `.env` 檔管理 `VITE_API_BASE_URL`，不硬編碼 API 位址
 - 所有跨切面關注點（JWT 注入、CSRF token、401 處理）集中在單一 `apiClient.js`
-
-> **注意**：`application-prod.properties` 目前並未覆寫 `stickerstore.cors.allowed-origins`，正式部署前須補上生產環境域名。
 
 ### 前端專案結構
 
