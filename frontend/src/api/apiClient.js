@@ -10,7 +10,9 @@ const apiClient = axios.create({
     "Content-Type": "application/json", // request body 的資料格式是 JSON
     Accept: "application/json", // 告訴後端希望 response 回傳 JSON
   },
-  withCredentials: true, // 對 CSRF cookie 流程很可能是必要的
+  // apiClient 發出的 API 請求，在跨來源時允許瀏覽器攜帶及接收 cookie；
+  // 讓登入等請求可以帶上 XSRF-TOKEN cookie。
+  withCredentials: true,
 });
 
 // 2. 註冊 request interceptor：在 request 送出前統一補上 JWT 與必要的 CSRF token。
@@ -30,9 +32,11 @@ apiClient.interceptors.request.use(
       // a. 從 cookies 中取得 CSRF token
       let csrfToken = Cookies.get("XSRF-TOKEN");
       if (!csrfToken) {
-        // b. 如果 cookies 中沒有 CSRF token，則呼叫 api 從後端取得 CsrfController 提供的 CSRF token
+        // b. 如果沒有 XSRF-TOKEN cookie，先呼叫後端 endpoint，讓 Spring Security 透過 Set-Cookie 設定 CSRF token。
         await axios.get(`${import.meta.env.VITE_API_BASE_URL}/csrf-token`, {
-          withCredentials: true, // 讓這次跨域請求可以攜帶 cookie，也允許瀏覽器接受後端的 Set-Cookie。若後端回傳 Set-Cookie: XSRF-TOKEN=...，瀏覽器會依 cookie 規則自動保存，之後前端可用 js-cookie 讀取 XSRF-TOKEN。
+          // 這裡使用原始 axios，不會繼承上方 apiClient 的設定，
+          // 因此要在這個獨立請求中再次允許跨來源 cookie，讓瀏覽器能接收並保存後端回傳的 Set-Cookie: XSRF-TOKEN=...。
+          withCredentials: true,
         });
         // c. 從 cookies 中取得 CSRF token
         csrfToken = Cookies.get("XSRF-TOKEN");

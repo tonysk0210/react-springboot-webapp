@@ -92,7 +92,7 @@ sequenceDiagram
         C-->>F: Set-Cookie: XSRF-TOKEN
     end
     F->>A: POST /api/v1/auth/login<br/>{ userName, password } + X-XSRF-TOKEN
-    A->>M: authenticate(UsernamePasswordAuthenticationToken)
+    A->>M: authenticate(UsernamePasswordAuthenticationToken)<br/>由前端傳入的 userName + password 封裝（尚未驗證）
     M->>P: authenticate()
     P->>DB: findByEmail(userName)
     DB-->>P: Customer + Roles

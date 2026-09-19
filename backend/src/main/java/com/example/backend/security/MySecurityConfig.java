@@ -23,8 +23,6 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import java.util.List;
 
-import static org.springframework.security.config.Customizer.withDefaults;
-
 @Configuration
 @EnableWebSecurity // 「我要開始用 Spring Security 保護我的 Web 應用」optional
 public class MySecurityConfig {
@@ -44,30 +42,22 @@ public class MySecurityConfig {
     SecurityFilterChain defaultSecurityFilterChain(HttpSecurity http) throws Exception {
         //http.csrf(csrfConfig -> csrfConfig.disable()); // 把 Spring Security 的 CSRF 保護關掉。
 
-
-        // 1. 啟用 CSRF 防護：將 token 存在可由前端讀取的 XSRF-TOKEN cookie，讓前端在非安全請求中帶回 X-XSRF-TOKEN header 供後端驗證。(403 without handling CSRF token)
+        // 啟用 CSRF 防護：修改資料的請求必須帶有正確的 CSRF token，否則回傳 403 forbidden。
         http.csrf(csrfConfig ->
-                csrfConfig.csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse()) // 讓 Spring Security 用 cookie 保存 CSRF token。cookie 名稱通常是：XSRF-TOKEN，讓前端 JavaScript 可以讀取這個 Cookie。
-                        .csrfTokenRequestHandler(new CsrfTokenRequestAttributeHandler()) // 讓 Spring Security 把 CsrfToken 放到 HttpServletRequest 的 attribute 裡。 CsrfController，也就是 /api/v1/csrf-token 可以回傳目前的 CSRF token 給前端。
-                        .ignoringRequestMatchers("/api/v1/contacts", "/api/v1/contacts/**")); // 忽略 Swagger 文件與公開 contact API 的 CSRF 檢查，讓 Swagger 測試 contact form 時可不帶 X-XSRF-TOKEN 呼叫。
+                // 透過 XSRF-TOKEN cookie 提供 token，並允許 React (JavaScript) 讀取。
+                csrfConfig.csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
+                        // 讓 CSRF filter 在 request 中準備 token，供 CsrfController 取得並回傳。
+                        .csrfTokenRequestHandler(new CsrfTokenRequestAttributeHandler())
+                        // 聯絡表單免除 CSRF 檢查。
+                        .ignoringRequestMatchers("/api/v1/contacts", "/api/v1/contacts/**"));
         /**
-         * Backend 不另外保存 CSRF token 紀錄；
-         * CookieCsrfTokenRepository 讓 cookie 本身成為 token 的保存來源，後端驗證時比對 UI 帶回來的 cookie token 與 header token 是否一致。
+         * CSRF 流程：
+         * 1. 前端沒有 token 時，先 GET /api/v1/csrf-token。
+         * 2. 瀏覽器保存後端透過 Set-Cookie 提供的 XSRF-TOKEN。
+         * 3. 前端將 cookie 中的 token 放入 X-XSRF-TOKEN header。
+         * 4. CsrfFilter 比對 cookie 與 header；相同就放行，不同或缺少就回傳 403。
          *
-         * 前端送出 POST / PUT / DELETE ...
-         * ↓
-         * request 進入 Spring Security filter chain
-         * ↓
-         * CsrfFilter 攔截 request
-         * ↓
-         * CookieCsrfTokenRepository 從 cookie 讀取/載入 server 期待的 token
-         * ↓
-         * CsrfTokenRequestAttributeHandler / CSRF 機制從 request header 讀 X-XSRF-TOKEN
-         * ↓
-         * Spring Security 比對 cookie 裡的 token 和 header 裡的 token
-         * ↓
-         * 一致：放行 request
-         * 不一致或缺少：回 403 Forbidden
+         * GET、HEAD、OPTIONS 等安全方法通常不需要 CSRF token。
          */
 
         // 2. 在 Spring Security 中開啟 CORS，並指定它使用 corsConfigurationSource() 這份跨域設定。CORS：限制哪些網站可以存取我的 API。
@@ -76,14 +66,9 @@ public class MySecurityConfig {
         // 3. 設定哪些路徑不需要驗證；越具體、越嚴格的規則放前面；越籠統、fallback 的規則放後面；anyRequest() 永遠放最後
         http.authorizeHttpRequests((request) -> {
             // 3.1 公開路徑
-            publicPaths.forEach(path ->
-                    request.requestMatchers(path).permitAll());
+            publicPaths.forEach(path -> request.requestMatchers(path).permitAll());
             // 3.2 限制路徑：需要 ADMIN 角色
-            request.requestMatchers(
-                    "/api/v1/admin/**",
-                    "/actuator/**",
-                    "/swagger-ui/**",
-                    "/v3/api-docs/**").hasRole("ADMIN");
+            request.requestMatchers("/api/v1/admin/**", "/actuator/**", "/swagger-ui/**", "/v3/api-docs/**").hasRole("ADMIN");
             // 3.3 其他路徑：需要 USER 或 ADMIN 角色
             request.anyRequest().hasAnyRole("USER", "ADMIN");
         });
@@ -92,8 +77,6 @@ public class MySecurityConfig {
         // 這樣帶有 Authorization: Bearer <token> 的 request 會先被 JWT filter 驗證，驗證成功後會把 Authentication 放進 SecurityContext，供後續授權規則使用。
         http.addFilterBefore(new JWTTokenValidatorFilter(publicPaths), BasicAuthenticationFilter.class);
 
-        http.formLogin(withDefaults()); // 啟用 Spring Security 預設表單登入頁面與表單登入流程
-        http.httpBasic(withDefaults()); // 啟用 HTTP Basic Auth，Client 透過 Authorization header 傳送帳號密碼
         return http.build();
     }
 
@@ -122,11 +105,6 @@ public class MySecurityConfig {
 
     /*
      * AuthenticationManager = 當 AuthController 呼叫 authenticate() 時，使用 ProviderManager 調度自訂的 MyAuthenticationProvider。
-     *
-     * 註：本專案不註冊 UserDetailsService bean。
-     * 帳號驗證一律由 MyAuthenticationProvider 直接查詢 CUSTOMERS 資料表完成，
-     * 若同時存在 UserDetailsService bean，Spring Security 7 會在啟動時發出
-     * InitializeUserDetailsManagerConfigurer 警告（兩者擇一即可）。
      */
     @Bean
     public AuthenticationManager authenticationManager(MyAuthenticationProvider myAuthenticationProvider) {
