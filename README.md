@@ -161,6 +161,7 @@ flowchart TB
     subgraph Backend["Spring Boot 後端 :8080"]
         direction TB
         SFC["SecurityFilterChain"]
+        CORS["CorsFilter<br/>CORS 檢查"]
         CSRF["CsrfFilter<br/>CSRF 驗證"]
         JWT["JWTTokenValidatorFilter<br/>OncePerRequestFilter"]
         AUTHZ["路徑授權規則<br/>permitAll / hasRole"]
@@ -177,7 +178,7 @@ flowchart TB
     Stripe["Stripe API<br/>PaymentIntent"]
 
     Browser -- "HTTP/HTTPS<br/>Authorization: Bearer JWT<br/>X-XSRF-TOKEN" --> SFC
-    SFC --> CSRF --> JWT --> AUTHZ --> CTRL
+    SFC --> CORS --> CSRF --> JWT --> AUTHZ --> CTRL
     CSRF -.使用.-> CSRFR
     CTRL --> SVC
     SVC <--> Cache
