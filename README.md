@@ -30,22 +30,33 @@
 
 ### 應用截圖
 
-> 截圖尚未補齊。拍攝完成後放入 `docs/screenshots/`，並移除下方 HTML 註解即可顯示。
-> 所需檔名與規格請見 [`docs/screenshots/README.md`](docs/screenshots/README.md)。
+**購物流程**
 
-<!--
-| 首頁 — 商品瀏覽與搜尋 | 商品詳情 |
+| 首頁 — 搜尋與排序 | 商品詳情 |
 |:---:|:---:|
-| ![首頁](docs/screenshots/home.png) | ![商品詳情](docs/screenshots/product.png) |
+| [![首頁](docs/screenshots/home.png)](docs/screenshots/home.png) | [![商品詳情](docs/screenshots/product.png)](docs/screenshots/product.png) |
+| 關鍵字搜尋、三種排序、商品卡片網格 | 商品大圖、價格、數量選擇與加入購物車 |
 
 | 購物車 | Stripe 結帳 |
 |:---:|:---:|
-| ![購物車](docs/screenshots/cart.png) | ![結帳](docs/screenshots/checkout.png) |
+| [![購物車](docs/screenshots/cart.png)](docs/screenshots/cart.png) | [![結帳](docs/screenshots/checkout.png)](docs/screenshots/checkout.png) |
+| 數量調整、移除、即時小計 | Stripe 分離式卡片欄位（卡號／有效日期／CVC） |
 
-| 訂單列表 | 管理後台 — 訂單管理 |
+**會員功能**
+
+| 我的歷史訂單 | 個人檔案 | 聯絡我們 |
+|:---:|:---:|:---:|
+| [![歷史訂單](docs/screenshots/orders.png)](docs/screenshots/orders.png) | [![個人檔案](docs/screenshots/profile.png)](docs/screenshots/profile.png) | [![聯絡我們](docs/screenshots/contact.png)](docs/screenshots/contact.png) |
+| 訂單狀態、總價、日期與明細品項 | 個人資料與收件地址一站管理 | 聯絡資訊依 Profile 注入，表單免 CSRF |
+
+**管理後台（ADMIN）**
+
+| 訂單管理 | 信息管理 |
 |:---:|:---:|
-| ![訂單](docs/screenshots/orders.png) | ![管理後台](docs/screenshots/admin.png) |
--->
+| [![訂單管理](docs/screenshots/orderManage.png)](docs/screenshots/orderManage.png) | [![信息管理](docs/screenshots/messages.png)](docs/screenshots/messages.png) |
+| 待處理訂單一鍵成立或取消 | 客服留言集中處理、標記已讀並關閉 |
+
+> 截圖規格與重拍方式請見 [`docs/screenshots/README.md`](docs/screenshots/README.md)。
 
 ### 使用者旅程
 
