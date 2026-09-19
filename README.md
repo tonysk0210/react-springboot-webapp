@@ -161,8 +161,8 @@ flowchart TB
     subgraph Backend["Spring Boot 後端 :8080"]
         direction TB
         SFC["SecurityFilterChain"]
+		CSRF["CookieCsrfTokenRepository<br/>XSRF-TOKEN"]
         JWT["JWTTokenValidatorFilter<br/>OncePerRequestFilter"]
-        CSRF["CookieCsrfTokenRepository<br/>XSRF-TOKEN"]
         AUTHZ["路徑授權規則<br/>permitAll / hasRole"]
         CTRL["Controller Layer<br/>/api/v1/*　@Valid 驗證"]
         SVC["Service Layer<br/>interface + impl"]
