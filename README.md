@@ -103,8 +103,8 @@ sequenceDiagram
         A->>A: 組裝 UserDto<br/>BeanUtils 複製 id/name/email/mobileNumber<br/>roles 併為逗號字串；address 另轉 AddressDto（無則略過）
         A->>J: generateJwtToken(authentication)
         J-->>A: JWT（HMAC-SHA256，20 分鐘效期）
-        A-->>F: 200 { message, user, jwtToken }
-        F->>F: 寫入 localStorage（jwtToken、user）
+        A-->>F: 200 LoginResponseDto<br/>{ message, user: UserDto, jwtToken }
+        F->>F: 寫入 localStorage<br/>jwtToken 存字串、user 存 JSON.stringify(UserDto)
     else 密碼錯誤 / 查無使用者
         P-->>M: BadCredentialsException<br/>UsernameNotFoundException
         M-->>A: AuthenticationException
