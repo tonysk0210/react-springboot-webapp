@@ -161,7 +161,7 @@ flowchart TB
     subgraph Backend["Spring Boot 後端 :8080"]
         direction TB
         SFC["SecurityFilterChain"]
-		CSRF["CookieCsrfTokenRepository<br/>XSRF-TOKEN"]
+        CSRF["CsrfFilter<br/>CSRF 驗證"]
         JWT["JWTTokenValidatorFilter<br/>OncePerRequestFilter"]
         AUTHZ["路徑授權規則<br/>permitAll / hasRole"]
         CTRL["Controller Layer<br/>/api/v1/*　@Valid 驗證"]
@@ -170,12 +170,15 @@ flowchart TB
         GEH["GlobalExceptionHandler<br/>@RestControllerAdvice"]
     end
 
+    CSRFR["CookieCsrfTokenRepository<br/>XSRF-TOKEN"]
+
     Cache["Caffeine Cache<br/>products 30min / roles 1day"]
     DB[("H2 file-based（dev）<br/>MySQL（prod）")]
     Stripe["Stripe API<br/>PaymentIntent"]
 
     Browser -- "HTTP/HTTPS<br/>Authorization: Bearer JWT<br/>X-XSRF-TOKEN" --> SFC
-    SFC --> JWT --> CSRF --> AUTHZ --> CTRL
+    SFC --> CSRF --> JWT --> AUTHZ --> CTRL
+    CSRF -.使用.-> CSRFR
     CTRL --> SVC
     SVC <--> Cache
     SVC --> REPO --> DB
