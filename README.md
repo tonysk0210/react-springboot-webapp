@@ -345,7 +345,7 @@ erDiagram
 private Set<Role> roles = new LinkedHashSet<>();
 
 @OneToOne(mappedBy = "customer", cascade = CascadeType.ALL)           // mappedBy → inverse side
-private Address address;                                             // 外鍵不在 CUSTOMERS，而在 ADDRESS
+private Address address;                                              // 外鍵不在 CUSTOMERS，而在 ADDRESS
 ```
 
 ```java
@@ -396,7 +396,16 @@ private Product product;
 
    判準很單純：**中介表自己有沒有業務資料**。`order_items` 必須記錄「買了幾個、當時單價多少」，所以它得是 Entity；`customer_roles` 只是把客戶和角色連起來，不需要。
 3. **`Customer.address` 是 inverse side** —— 判準是「誰身上有 `@JoinColumn`」，而 `@JoinColumn` 在 `Address` 上。所以 `Customer` 標的是 `mappedBy = "customer"`，僅為唯讀視角；真正寫入 `address.customer_id` 的是儲存 `Address` 的動作。`cascade = ALL` 讓儲存／刪除 `Customer` 時連帶處理其 `Address`。
-4. **三個 `@OnDelete(RESTRICT)` 是刻意的** —— 訂單與訂單明細指向的來源（客戶、訂單、商品）都禁止刪除，以免歷史訂單失去參照。這與 `schema.sql` 一致：`ADDRESS` 與 `CUSTOMER_ROLES` 有 `ON DELETE CASCADE`，但 `ORDERS` 沒有。
+4. **三個 `@OnDelete(RESTRICT)` 是刻意的** —— 訂單與訂單明細指向的來源（客戶、訂單、商品）都禁止刪除，以免歷史訂單失去參照。這與 `schema.sql` 的外鍵宣告一致：
+
+   | 子表 | `ON DELETE` 子句 | 刪除父列時 |
+   |---|---|---|
+   | `address` | `CASCADE` | 連帶刪除 |
+   | `customer_roles` | `CASCADE` | 連帶刪除 |
+   | `orders` | **省略** | **擋下刪除**（省略等同 `NO ACTION`／RESTRICT） |
+   | `order_items` | **省略** | **擋下刪除** |
+
+   所以有訂單的客戶刪不掉、有明細的訂單刪不掉、被訂購過的商品也刪不掉 —— 資料庫會直接拋出外鍵違反錯誤，而非靜默忽略。另註：因 `ddl-auto` 實際為 `none`，`@OnDelete` 不會產生任何 DDL，它只是把設計意圖寫在程式碼裡，真正生效的是 `schema.sql`。
 
 | 類別 | 類型 | 注意事項 |
 |---|---|---|
