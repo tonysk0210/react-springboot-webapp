@@ -401,7 +401,7 @@ private Product product;
 | 類別 | 類型 | 注意事項 |
 |---|---|---|
 | `Customer` | JPA Entity | `roles` 為 **EAGER**；`address` 未指定 fetch，`@OneToOne` 預設也是 **EAGER** → 載入一次會連帶發出數筆 SQL |
-| `Order` | JPA Entity | `orderItems` 為 **LAZY**（`@OneToMany` 預設）—— 這是 OSIV 不能關閉的原因，詳見下方 |
+| `Order` | JPA Entity | `orderItems` 為 **LAZY**（`@OneToMany` 預設） |
 | `Address`、`OrderItem` | JPA Entity | 關聯皆明示 `LAZY`（`Address` 1 個、`OrderItem` 2 個） |
 | `Product` | JPA Entity | **自身未宣告任何關聯** —— 被 `OrderItem.product` 單向參照，未設 inverse side（`Product` 上沒有 `orderItems` 集合） |
 | `Contact` | JPA Entity | **完全獨立**，無任何外鍵進出 |
@@ -411,10 +411,7 @@ private Product product;
 #### 資料層重點
 
 - 開發環境使用 **H2 file-based**（`jdbc:h2:file:./h2db/myDb;AUTO_SERVER=true`），**資料會跨重啟保留** —— 與記憶體模式不同，devtools 熱重載或重新啟動都不會清空，手動建立的測試資料會一直累積。想重置就直接刪掉 `backend/h2db/` 整個目錄，下次啟動會依 `schema.sql` + `data.sql` 重建
-- **`spring.jpa.hibernate.ddl-auto=validate`** —— Hibernate 在啟動時逐一比對每個 Entity 與實際資料表，**欄位缺失或型別不符會直接讓啟動失敗**；但它**只驗證，不建表也不修改任何結構**，因此 `sql/schema.sql` 仍是 schema 的唯一真相。⚠️ 改欄位時務必同步修改 `sql/schema.sql` 與 `entity/` 底下的標註，否則下次啟動就會被擋下。
-  - 此為基礎組態，**qa / prod 亦繼承**。prod 的 MySQL schema 若為手動建置且與 `schema.sql` 有落差，啟動會失敗 —— 要讓 prod 例外，在 `application-prod.properties` 加上 `spring.jpa.hibernate.ddl-auto=none`。
-  - 未設定時預設為 `none`（file-based H2 不被 Spring Boot 視為 embedded），那種情況下 Entity 與 schema 不同步**不會有任何警告**，要等到實際查詢該欄位才會拋出 SQL 例外。
-  - `validate` **不檢查外鍵的 `ON DELETE` 行為**，只看資料表、欄位與型別。
+- **`spring.jpa.hibernate.ddl-auto=validate`** —— Hibernate 在啟動時逐一比對每個 Entity 與實際資料表，**欄位缺失或型別不符會直接讓啟動失敗**；但它**只驗證，不建表也不修改任何結構**，因此 `sql/schema.sql` 仍是 schema 的唯一真相。
 - 初始資料 `sql/data.sql` 全部使用 **H2 專屬的 `MERGE INTO ... KEY(...)`**（共 35 條）達成冪等 upsert，重複啟動不會產生重複資料。⚠️ **這個語法在 MySQL 上不成立** —— prod profile 設定 `spring.sql.init.mode=never` 迴避了這點，所以**正式環境的 schema 與種子資料必須另行建置**，不能指望這兩個檔案
 - 種子資料內容：30 筆商品、3 個角色（`ROLE_ADMIN` / `ROLE_USER` / `ROLE_OP`）、1 個管理員（`admin@gmail.com`）、2 則示範留言。⚠️ `ROLE_OP` 已寫入且指派給管理員，但 `MySecurityConfig` 的授權規則**從未使用它**，屬預留角色
 - 所有 Entity 繼承 `entity/BaseEntity` 的四個稽核欄位（`Instant createdAt` / `updatedAt`、`String createdBy` / `updatedBy`），由 `@EnableJpaAuditing` + `config/AuditorAwareImpl` 自動填入。未登入時 auditor 回傳的是 **`"SYSTEM"`**；已登入時取 `Customer.email`。註冊這類未登入寫入流程即靠此機制才不會因 `created_by` 為 null 而失敗
@@ -431,17 +428,7 @@ private Product product;
 | `OrderItem.order` / `.product` | `@ManyToOne(fetch = LAZY, optional = false)` ×2 | LAZY | 明示 |
 | `Role.customers` | `@ManyToMany(mappedBy = "roles")` | LAZY | 未指定 → `@ManyToMany` 預設即 LAZY |
 
-> **`Address.customer` 的 LAZY 能真正生效，關鍵在 `optional = false`。** `@OneToOne` 的 owning side 若是 `optional = true`（預設），Hibernate 必須先查一次才知道關聯是否為 null，**LAZY 會被靜默忽略、退回 EAGER**。這裡明確標了 `optional = false`，代表「一定有對應的 Customer」，proxy 才能成立。
-
 - 載入一個 `Customer` 會**連帶發出 roles 與 address 的查詢**（兩者皆 EAGER），登入流程因此會有數筆 SQL。目前資料量下無妨，但若日後 `Customer` 出現在列表查詢中需留意 N+1
-- ⚠️ **`spring.jpa.open-in-view` 目前為預設的 `true`，不要為了消掉啟動 WARN 就把它關掉。** service 與 controller 層**完全沒有任何 `@Transactional`**，`Order.orderItems` 又是 LAZY，DTO 組裝發生在交易之外。實測以 `--spring.jpa.open-in-view=false` 啟動後，`/api/v1/orders` 與 `/api/v1/admin/orderManage` 直接回 500：
-
-  ```
-  Cannot lazily initialize collection of role
-  'com.example.backend.entity.Order.orderItems' - no session
-  ```
-
-  真要關閉，必須先為查詢方法補上 `@Transactional(readOnly = true)` 或改用 fetch join / `@EntityGraph`
 
 - `ORDER_ITEMS.price` 儲存的是**下單當下的單價快照**，與 `PRODUCTS.price` 解耦 —— 日後調整商品售價不會回頭改寫歷史訂單金額
 - ⚠️ 商品列表掛了 `@Cacheable("products")`，TTL 10 分鐘。**直接改資料庫的商品資料後，最長需等 10 分鐘前端才會看到變化**；開發時要立即生效請重啟應用程式
@@ -807,16 +794,19 @@ Boot 4.1.1 原生搭配 Spring Security 7.1.1，本專案在 `pom.xml` 明確覆
 | Caffeine 快取加上 `recordStats()` | 未開啟時 Actuator 僅能取得 `cache.size`，並於啟動時發出警告 |
 | prod profile 關閉 springdoc 端點 | springdoc 3 預設開啟 `/v3/api-docs` 與 `/swagger-ui.html` |
 
-**5. 尚未處理：`spring.jpa.open-in-view`**
+**5. `spring.jpa.open-in-view` 的啟動警告**
 
-啟動時仍會出現 OSIV 警告。實測關閉後（`--spring.jpa.open-in-view=false`），`/api/v1/orders` 與 `/api/v1/admin/orderManage` 會直接回 500：
+Boot 4 啟動時會出現：
 
 ```
-Cannot lazily initialize collection of role
-'com.example.backend.entity.Order.orderItems' - no session
+spring.jpa.open-in-view is enabled by default. Therefore, database queries
+may be performed during view rendering. Explicitly configure
+spring.jpa.open-in-view to disable this warning
 ```
 
-原因是 `Order.orderItems` 為 LAZY 關聯，而 service / controller 層**完全沒有 `@Transactional`**，DTO 組裝發生在交易之外。要關閉 OSIV 必須先補上交易邊界或改用 fetch join，屬獨立的重構工作，故本次維持預設值（啟用）。
+重點在最後一句 —— Spring Boot 要的是**顯式宣告**，不是一定要你關閉。本專案選擇寫上 `spring.jpa.open-in-view=true` 保留預設行為，警告即消失。
+
+若要改為 `false`，實測會讓 `/api/v1/orders` 與 `/api/v1/admin/orderManage` 回 500 （`Cannot lazily initialize collection of role 'Order.orderItems' - no session`），因為 `Order.orderItems` 為 LAZY 而 DTO 組裝發生在交易之外。`OrderServiceImpl` 的 `getCustomerOrders()` 與 `getAllPendingOrders()` 已補上 `@Transactional(readOnly = true)`（這兩個是唯一會走到 `order.getOrderItems()` 的進入點），因此改為 `false` 也可正常運作 —— 兩種設定皆已實測通過。
 
 ---
 
@@ -1212,7 +1202,7 @@ npm run lint            # ESLint 檢查
 | **`formLogin` / `httpBasic` 為無效設定** | `MySecurityConfig` 有啟用，但永遠不會被觸發（同上原因） | 移除以免誤導，或調整 filter 順序讓其真正生效 |
 | **JWT 效期偏短** | 20 分鐘，且無 refresh token 機制，閒置後需重新登入 | 導入 refresh token，或延長效期並加上滑動續期 |
 | **JWT 未帶 `customerId`** | 以 `email` 作為 principal，每次請求需依 email 反查使用者 | 於 claims 加入 `customerId`，減少查詢 |
-| **無交易邊界，OSIV 無法關閉** | service / controller 層無任何 `@Transactional`，`spring.jpa.open-in-view` 一旦關閉，`/orders` 與 `/admin/orderManage` 即因 LAZY 關聯回 500（已實測） | 為查詢方法補 `@Transactional(readOnly = true)` 或改用 fetch join，之後即可關閉 OSIV |
+| **交易邊界僅涵蓋訂單查詢** | 已為 `OrderServiceImpl` 的兩個查詢方法補上 `@Transactional(readOnly = true)`；但 `createOrder()`、`updateOrderStatus()` 等寫入方法仍未標註，多個 repository 操作非單一原子單位。OSIV 維持開啟（`true`），LAZY 關聯的載入時機因此較寬鬆 | 為寫入方法補上 `@Transactional`；查詢端可再用 `JOIN FETCH` / `@EntityGraph` 消除 N+1 |
 | **jjwt 仍相依 Jackson 2** | Boot 4 已改用 Jackson 3，但 `jjwt-jackson` 0.13.0 仍需 Jackson 2，故 `pom.xml` 額外保留 `jackson-databind`（2.21.5） | 待 jjwt 發布支援 Jackson 3 的版本後移除該相依 |
 | **`.env.localhost`** | `npm run build:localhost` 指定 `--mode localhost` 但無對應檔案，實際回退至 `.env` | 補上 `.env.localhost` 或移除該 script |
 | **授權條款** | 無 LICENSE 檔 | 視用途補上 MIT 或其他授權 |

@@ -15,6 +15,7 @@ import com.example.backend.service.OrderService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -63,6 +64,7 @@ public class OrderServiceImpl implements OrderService {
      * 取得當前用戶的所有訂單（購買紀錄）
      */
     @Override
+    @Transactional(readOnly = true) // 讓 mapToOrderResponseDTO 存取 LAZY 的 order.orderItems 時 session 仍開著
     public List<OrderResponseDto> getCustomerOrders() {
         // 1. 取得當前登入用戶的 Customer 物件
         Customer customer = profileServiceImpl.getAuthenticatedCustomer();
@@ -79,6 +81,7 @@ public class OrderServiceImpl implements OrderService {
      * 取得所有狀態為 CREATED 的訂單
      */
     @Override
+    @Transactional(readOnly = true) // 同上；private 的 mapToOrderResponseDTO 無法自行標註（Spring AOP 不攔 private／自我呼叫）
     public List<OrderResponseDto> getAllPendingOrders() {
         // 1. 取得所有狀態為 CREATED 的訂單
         List<Order> orders = orderRepo.findByOrderStatus(ApplicationConstants.ORDER_STATUS_CREATED);
