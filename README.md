@@ -412,11 +412,10 @@ private Product product;
 
 - 開發環境使用 **H2 file-based**（`jdbc:h2:file:./h2db/myDb;AUTO_SERVER=true`），**資料會跨重啟保留** —— 與記憶體模式不同，devtools 熱重載或重新啟動都不會清空，手動建立的測試資料會一直累積。想重置就直接刪掉 `backend/h2db/` 整個目錄，下次啟動會依 `schema.sql` + `data.sql` 重建
 - **`spring.jpa.hibernate.ddl-auto=validate`** —— Hibernate 在啟動時逐一比對每個 Entity 與實際資料表，**欄位缺失或型別不符會直接讓啟動失敗**；但它**只驗證，不建表也不修改任何結構**，因此 `sql/schema.sql` 仍是 schema 的唯一真相。
-- 初始資料 `sql/data.sql` 全部使用 **H2 專屬的 `MERGE INTO ... KEY(...)`**（共 35 條）達成冪等 upsert，重複啟動不會產生重複資料。⚠️ **這個語法在 MySQL 上不成立** —— prod profile 設定 `spring.sql.init.mode=never` 迴避了這點，所以**正式環境的 schema 與種子資料必須另行建置**，不能指望這兩個檔案
-- 種子資料內容：30 筆商品、3 個角色（`ROLE_ADMIN` / `ROLE_USER` / `ROLE_OP`）、1 個管理員（`admin@gmail.com`）、2 則示範留言。⚠️ `ROLE_OP` 已寫入且指派給管理員，但 `MySecurityConfig` 的授權規則**從未使用它**，屬預留角色
+- 初始資料 `sql/data.sql` 全部使用 **H2 專屬的 `MERGE INTO ... KEY(...)`**（共 35 條）達成冪等 upsert，重複啟動不會產生重複資料
+- 種子資料內容：30 筆商品、3 個角色（`ROLE_ADMIN` / `ROLE_USER` / `ROLE_OP`）、1 個管理員（`admin@gmail.com`）、2 則示範留言
 - 所有 Entity 繼承 `entity/BaseEntity` 的四個稽核欄位（`Instant createdAt` / `updatedAt`、`String createdBy` / `updatedBy`），由 `@EnableJpaAuditing` + `config/AuditorAwareImpl` 自動填入。未登入時 auditor 回傳的是 **`"SYSTEM"`**；已登入時取 `Customer.email`。註冊這類未登入寫入流程即靠此機制才不會因 `created_by` 為 null 而失敗
 - `ORDER_ITEMS.price` 儲存的是**下單當下的單價快照**，與 `PRODUCTS.price` 解耦 —— 日後調整商品售價不會回頭改寫歷史訂單金額
-- ⚠️ 商品列表掛了 `@Cacheable("products")`，TTL 10 分鐘。**直接改資料庫的商品資料後，最長需等 10 分鐘前端才會看到變化**；開發時要立即生效請重啟應用程式
 
 **Fetch 策略**（決定一次查詢會連帶撈出多少資料）
 
@@ -634,47 +633,47 @@ public abstract class BaseEntity {
 
 ### 前端
 
-| 技術 | 版本 | 用途 | 特性 |
-|------|------|------|----------|
-| **React** | 19.2.4 | UI 框架 | Concurrent features、函數元件 + Hooks 為主流，生態系豐富 |
-| **Vite** | 8.0.4 | 建構工具 | 基於 ESM 的開發伺服器，HMR 速度遠優於 Webpack；多環境 `.env` 分檔管理 |
-| **React Router DOM** | 7.14.1 | 用戶端路由 | Data API（loader / action）將資料獲取與元件渲染解耦，取代 useEffect 拉資料的舊模式 |
-| **Redux Toolkit** | 2.12.0 | 購物車狀態管理 | `createSlice` 內建 Immer，可直接改寫 state；`store.subscribe()` 可在每次變更後同步至 localStorage |
-| **React Redux** | 9.3.0 | Redux 綁定層 | 提供 `useSelector` / `useDispatch`，與 React 18+ 並行渲染相容 |
-| **React Context** | 內建 | 登入狀態管理 | React 內建的跨元件狀態傳遞機制，無需額外套件；無選擇性訂閱，Provider 值變動時其下所有消費者皆重新渲染 |
-| **Axios** | 1.15.0 | HTTP 客戶端 | 攔截器機制讓 JWT 注入與 CSRF token 處理集中在單一位置，避免重複程式碼 |
-| **js-cookie** | 3.0.5 | Cookie 讀取 | 讀取 `XSRF-TOKEN` cookie，API 比原生 `document.cookie` 簡潔 |
-| **Stripe JS / React Stripe** | 9.4.0 / 6.3.0 | 付款 UI | PCI-DSS 合規的嵌入式表單元件，卡號資料直接傳至 Stripe，後端不經手敏感資訊 |
-| **Tailwind CSS** | 4.2.2 | 原子化樣式 | Utility-first 策略提升開發速度，`dark:` 變體讓深色模式實作極為精簡 |
-| **Bootstrap** | 5.3.8 | UI 元件補充 | 快速建構表格、Modal 等標準元件，與 Tailwind 並存互補 |
-| **Sass** | 1.99.0 | CSS 前處理器 | `custom.scss` 客製 Bootstrap 變數 |
-| **styled-components** | 6.4.0 | CSS-in-JS | 局部元件動態樣式 |
-| **React Toastify** | 11.1.0 | 通知提示 | API 操作回饋的輕量解決方案，可自訂位置與樣式 |
-| **FontAwesome** | 7.2.0 | 圖示 | SVG Icon 方案（Solid / Regular / Brands），可 tree-shaking |
-| **ESLint** | 9.39.4 | 靜態檢查 | Flat Config + react-hooks / react-refresh 插件 |
+| 技術 | 版本 | 用途 | 本專案的實際用法 |
+|------|------|------|-----------------|
+| **React** | 19.2.4 | UI 框架 | 全部為函數元件 + Hooks：`useEffect` 23 處、`useState` 18、`useReducer` 9、`useRef` 8、`useMemo` 7、`useContext` 4；`StrictMode` 包住整個 app |
+| **Vite** | 8.0.4 | 建構工具 | dev / preview 皆固定 5173；`manualChunks` 拆成 vendor / redux / router / ui 四個 chunk；`minify: "esbuild"`、關閉 sourcemap；`--mode` 切換 `.env.dev` |
+| **React Router DOM** | 7.14.1 | 用戶端路由 | `createBrowserRouter` + `createRoutesFromElements`；以 `loader` / `action` 取代 useEffect 拉資料；用到 `useLoaderData`、`useActionData`、`useNavigation`、`useRouteError`、`redirect`；`errorElement` 接 `ErrorPage`；`/profile` 另用 `shouldRevalidate` |
+| **Redux Toolkit** | 2.12.0 | 購物車狀態 | 單一 slice（`cart-slice.js`）：3 個 action、3 個 selector；`configureStore` + `store.subscribe()` 同步 localStorage |
+| **React Redux** | 9.3.0 | Redux 綁定 | `<Provider>`、`useSelector`、`useDispatch` 三者 |
+| **React Context** | 內建 | 登入狀態 | 一個 `AuthProvider`（`auth-context.jsx`），提供 `loginSuccess` / `logout`，並在載入時從 localStorage 還原登入狀態 |
+| **Axios** | 1.15.0 | HTTP 客戶端 | 單一 instance（`apiClient.js`）：request 攔截器補 JWT 與 CSRF、response 攔截器處理 401；`withCredentials: true`、`timeout: 50000` |
+| **js-cookie** | 3.0.5 | Cookie 讀取 | 只用到 `Cookies.get("XSRF-TOKEN")` 一個呼叫，供 CSRF 標頭取值 |
+| **Stripe JS / React Stripe** | 9.4.0 / 6.3.0 | 付款 UI | `<Elements>` 包住 app；分離式 `CardNumberElement` / `CardExpiryElement` / `CardCvcElement`；`useStripe` + `useElements` + `confirmCardPayment` |
+| **Tailwind CSS** | 4.2.2 | 樣式主力 | 經 `@tailwindcss/vite` 掛載；`dark:` 變體共 206 處，整個深色模式由它實作 |
+| **React Toastify** | 11.1.0 | 通知提示 | `<ToastContainer>` 設定 top-center / 3 秒 / Bounce；`toast.success` 9 次、`toast.error` 5 次、`toast.info` 1 次 |
+| **FontAwesome** | 7.2.0 | 圖示 | 僅匯入 `free-solid-svg-icons`；brands / regular 兩包已安裝但未使用 |
+| **styled-components** | 6.4.0 | CSS-in-JS | 僅 `components/footer/Footer.jsx` 一處使用 |
+| **Bootstrap** | 5.3.8 | （未生效） | ⚠️ `main.jsx` 第 1–8 行的 CSS 與 JS 匯入**整段被註解掉**，JSX 中也未使用 Bootstrap class，目前不影響畫面 |
+| **Sass** | 1.99.0 | （未生效） | ⚠️ `custom.scss` 內容全是註解，且其 `import` 位於上述同一個註解區塊內 |
+| **ESLint** | 9.39.4 | 靜態檢查 | Flat Config（`eslint.config.js`），搭配 `react-hooks` 與 `react-refresh` 插件 |
 
 ### 後端
 
-| 技術 | 版本 | 用途 | 特性 |
-|------|------|------|----------|
-| **Spring Boot** | 4.1.1 | 應用框架 | 自動配置降低設定成本，與 Spring 生態系深度整合（Security、Data JPA、Actuator） |
-| **Spring Framework** | 7.0.9 | 核心容器 | 由 Boot 4.1.1 管理，基線為 Jakarta EE 11 |
-| **Java** | 25 | 執行環境 | 採用最新語法特性，Record class 用於 DTO 大幅簡化程式碼 |
-| **Spring Security** | 7.1.0 | 認證與授權 | Filter Chain 架構提供細粒度的安全控制；**以 `<spring-security.version>` 明確覆寫**，Boot 4.1.1 原生搭配為 7.1.1 |
-| **JJWT** | 0.13.0 | JWT 處理 | 業界標準 JWT 函式庫，支援 HMAC-SHA256 簽名與 Claims 解析 |
-| **Jackson** | 3.1.5 | JSON 序列化 | Boot 4 預設改用 `tools.jackson`；另保留 Jackson 2（2.21.5）供 jjwt 使用，詳見下方說明 |
-| **Spring Data JPA / Hibernate** | 7.4.5 | ORM | Repository 介面自動生成 CRUD，搭配 JPA Auditing 實現稽核紀錄 |
-| **H2** | 2.4.240 | 開發資料庫 | 嵌入式資料庫（本專案用 file-based），無需安裝即可啟動 |
-| **MySQL Connector/J** | 9.7.0 | 生產資料庫 | Production profile 切換至 MySQL，透過環境變數注入連線設定 |
-| **Caffeine** | 3.2.4 | 記憶體快取 | JVM 本地快取，商品列表 TTL 10 分鐘，角色清單 TTL 1 天，避免頻繁查詢 DB |
-| **Tomcat** | 11.0.24 | 內嵌容器 | 由 Boot 4 管理，對應 Jakarta Servlet 6.1 |
-| **Stripe Java SDK** | 32.1.0 | 支付處理 | 官方 SDK，後端僅建立 PaymentIntent 並回傳 clientSecret，不接觸卡號資料 |
-| **SpringDoc OpenAPI** | 3.1.1 | API 文件 | 3.x 才支援 Boot 4 / Framework 7（2.x 僅支援 Boot 3） |
-| **Bean Validation** | — | 輸入驗證 | `@Valid` / `@Validated` 宣告式驗證，錯誤由 GlobalExceptionHandler 統一格式化 |
-| **Lombok** | — | 樣板碼消除 | `@RequiredArgsConstructor` 產生建構子注入，`@Data`、`@Builder` 等減少重複程式碼 |
-| **Spring Boot Actuator** | — | 健康檢查 | `/actuator/health` 公開，其餘路徑限 ADMIN，適用於 K8s liveness probe |
-| **Spring Boot DevTools** | — | 開發體驗 | 程式碼變更自動重啟，縮短回饋循環 |
-| **Maven** | 3.9+ | 建構工具 | 成熟穩定的依賴管理，內附 Maven Wrapper (`mvnw`) 免安裝 |
+| 技術 | 版本 | 用途 | 本專案的實際用法 |
+|------|------|------|-----------------|
+| **Spring Boot** | 4.1.1 | 應用框架 | 使用 web、data-jpa、security、validation、cache、actuator 六個 starter |
+| **Spring Framework** | 7.0.9 | 核心容器 | 由 Boot 管理；`@RestController` / `@Service` / `@Configuration`，依賴一律建構子注入 |
+| **Java** | 25 | 執行環境 | DTO 與 payload 共 12 個 **record**；另有 4 處 `var`、1 處 instanceof pattern matching |
+| **Spring Security** | 7.1.0 | 認證與授權 | 自訂 `SecurityFilterChain`；`CookieCsrfTokenRepository`；自訂 `AuthenticationProvider` 搭 `ProviderManager`；`formLogin`；`BCryptPasswordEncoder`；自訂 `OncePerRequestFilter` 驗 JWT |
+| **JJWT** | 0.13.0 | JWT 處理 | `Jwts.builder()` 簽發（issuer、subject、4 個 claim、20 分鐘效期）；`Jwts.parser().verifyWith()` 驗章；`Keys.hmacShaKeyFor` 產生 HMAC-SHA256 金鑰 |
+| **Jackson** | 3.1.5 | JSON 序列化 | 由 Boot 自動配置，**無自訂 ObjectMapper**；另保留 Jackson 2（2.21.5）僅供 jjwt 相依使用 |
+| **Spring Data JPA / Hibernate** | 7.4.5 | ORM | 5 個 `JpaRepository`；9 個 `@Query`（含 2 個 `@Modifying` bulk update）；`@EnableJpaAuditing` 搭自訂 `AuditorAware` |
+| **H2** | 2.4.240 | 開發資料庫 | file-based（`./h2db/myDb`）+ `AUTO_SERVER=true`；啟動時執行 `schema.sql` 與 `data.sql` |
+| **MySQL Connector/J** | 9.7.0 | 生產資料庫 | 僅 prod profile 使用，連線參數全由環境變數注入 |
+| **Caffeine** | 3.2.4 | 記憶體快取 | 自訂 `CacheManager` 建兩個 cache：`products` 10 分鐘、`roles` 1 天，皆開啟 `recordStats()` |
+| **Tomcat** | 11.0.24 | 內嵌容器 | 全預設組態，僅使用 8080 埠 |
+| **Stripe Java SDK** | 32.1.0 | 支付處理 | 只用到 `PaymentIntent.create()` 取得 `clientSecret` 一支 API |
+| **SpringDoc OpenAPI** | 3.1.1 | API 文件 | 完全由 Controller 自動產生，程式碼中**沒有任何 OpenAPI 註解** |
+| **Bean Validation** | — | 輸入驗證 | `@Size` 25、`@NotNull` 21、`@NotBlank` 17、`@Pattern` 4、`@Email` 3；進入點用 `@Valid` 6 處、`@Validated` 3 處 |
+| **Lombok** | — | 樣板碼消除 | `@RequiredArgsConstructor` 15、`@Getter` 10、`@Data` 10、`@Setter` 8、`@Slf4j` 7 |
+| **Spring Boot Actuator** | — | 監控 | 只用內建端點，**未實作** 任何 `InfoContributor` 或 `HealthIndicator` |
+| **Spring Boot DevTools** | — | 開發體驗 | 程式碼變更自動重啟；打包成 jar 時會自動排除 |
+| **Maven** | 3.9+ | 建構工具 | 內附 Wrapper（`mvnw`）；`spring-boot-maven-plugin` 打包，compiler plugin 掛 Lombok annotation processor |
 
 ---
 

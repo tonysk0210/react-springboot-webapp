@@ -5665,3 +5665,8 @@ Caused by: java.io.FileNotFoundException: class path resource [com/example/backe
 2026-09-20T15:26:15.785+08:00  INFO 31884 --- [backend] [http-nio-8097-exec-4] o.s.web.servlet.DispatcherServlet        : Initializing Servlet 'dispatcherServlet'
 2026-09-20T15:26:15.787+08:00  INFO 31884 --- [backend] [http-nio-8097-exec-4] o.s.web.servlet.DispatcherServlet        : Completed initialization in 2 ms
 2026-09-20T15:26:31.850+08:00  INFO 31884 --- [backend] [http-nio-8097-exec-9] o.springdoc.api.AbstractOpenApiResource  : Init duration for springdoc-openapi is: 538 ms
+2026-09-20T18:48:58.937+08:00  WARN 28524 --- [backend] [HikariPool-7:housekeeper] com.zaxxer.hikari.pool.HikariPool        : HikariPool-7 - Thread starvation or clock leap detected (housekeeper delta=3h13m45s854ms671µs800ns).
+2026-09-20T22:21:50.519+08:00  WARN 28524 --- [backend] [HikariPool-7:housekeeper] com.zaxxer.hikari.pool.HikariPool        : HikariPool-7 - Thread starvation or clock leap detected (housekeeper delta=2h22m51s678ms105µs100ns).
+2026-09-20T22:59:36.680+08:00  INFO 28524 --- [backend] [http-nio-8080-exec-2] o.a.c.c.C.[Tomcat-1].[localhost].[/]     : Initializing Spring DispatcherServlet 'dispatcherServlet'
+2026-09-20T22:59:36.683+08:00  INFO 28524 --- [backend] [http-nio-8080-exec-2] o.s.web.servlet.DispatcherServlet        : Initializing Servlet 'dispatcherServlet'
+2026-09-20T22:59:36.715+08:00  INFO 28524 --- [backend] [http-nio-8080-exec-2] o.s.web.servlet.DispatcherServlet        : Completed initialization in 31 ms
