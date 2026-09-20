@@ -434,7 +434,7 @@ private Product product;
 
 ## 3. 核心功能與亮點
 
-### 購物體驗
+### 🛒 購物體驗
 
 - **商品瀏覽**：30 款商品，支援關鍵字搜尋（同時比對名稱與描述，不分大小寫）與三種排序（熱門度、價格由低至高、價格由高至低），全部以 `useMemo` 在前端完成，零額外 API 呼叫
 - **購物車持久化**：Redux Toolkit 管理，`store.subscribe()` 自動同步至 `localStorage`，刷新頁面零狀態遺失
@@ -444,13 +444,13 @@ private Product product;
 - **深色模式**：`Header.jsx` 切換後寫入 `localStorage("mode")`，透過 `document.documentElement.classList` 搭配 Tailwind `dark:` 變體全站生效，Stripe 卡片元件樣式亦隨之調整
 - **登入後導回原頁**：未登入存取受保護頁面時，原路徑存入 `sessionStorage.redirectPath`，登入完成後自動導回
 
-### 管理後台
+### 🛠️ 管理後台
 
 - **訂單看板**：列出所有 `status = CREATED` 的待處理訂單，一鍵確認或取消
 - **客服留言管理**：集中處理所有 `status = OPEN` 的留言，可標記為已關閉
 - **Swagger UI / OpenAPI**：SpringDoc 自動產生完整 API 規格，限 ADMIN 存取
 
-### 平台安全
+### 🔐 平台安全
 
 #### JWT 無狀態認證
 
@@ -515,8 +515,6 @@ JWT 與 CSRF 對應不同攻擊面，兩者並存：
 
 公開路徑定義在 `PublicPathConfig.java` bean，集中管理避免分散於多個設定類別。
 
-> **前後端授權分工**：前端 `ProtectedRoute` 僅檢查「是否已登入」，`Header.jsx` 則依 `user.role` 決定是否顯示管理選單。**ADMIN 權限的實際強制在後端** — 一般使用者即使手動輸入 `/admin/orderManage`，後端 `/api/v1/admin/**` 仍會回傳 403。這是刻意的設計：前端權限檢查只是 UX，不可作為安全邊界。
-
 #### 密碼安全
 
 - 註冊時以 `BCryptPasswordEncoder` 雜湊後儲存，不存明文
@@ -538,7 +536,7 @@ JWT 與 CSRF 對應不同攻擊面，兩者並存：
 
 後端全程不接觸卡號，符合 **PCI-DSS**（Payment Card Industry Data Security Standard，支付卡產業資料安全標準）中 **SAQ A**（Self-Assessment Questionnaire A，最輕量的自評問卷等級，適用於卡號完全外包給第三方、自身伺服器從不接觸的商家）的整合模式。
 
-### 性能設計
+### ⚡ 性能設計
 
 #### Caffeine 本地快取
 
@@ -549,7 +547,7 @@ JWT 與 CSRF 對應不同攻擊面，兩者並存：
 
 商品資料為唯讀且更新頻率極低，快取可大幅減少 DB 查詢。角色資料幾乎不變，適合較長的 TTL。
 
-### 工程設計亮點
+### 🧩 工程設計亮點
 
 #### 狀態管理策略 — Redux 與 Context 的分工
 
@@ -636,14 +634,14 @@ public abstract class BaseEntity {
 
 ### 前端
 
-| 技術 | 版本 | 用途 | 選用理由 |
+| 技術 | 版本 | 用途 | 特性 |
 |------|------|------|----------|
 | **React** | 19.2.4 | UI 框架 | Concurrent features、函數元件 + Hooks 為主流，生態系豐富 |
 | **Vite** | 8.0.4 | 建構工具 | 基於 ESM 的開發伺服器，HMR 速度遠優於 Webpack；多環境 `.env` 分檔管理 |
 | **React Router DOM** | 7.14.1 | 用戶端路由 | Data API（loader / action）將資料獲取與元件渲染解耦，取代 useEffect 拉資料的舊模式 |
-| **Redux Toolkit** | 2.12.0 | 購物車狀態管理 | 購物車需跨多個頁面共享並持久化，`createSlice` 大幅減少樣板程式碼 |
+| **Redux Toolkit** | 2.12.0 | 購物車狀態管理 | `createSlice` 內建 Immer，可直接改寫 state；`store.subscribe()` 可在每次變更後同步至 localStorage |
 | **React Redux** | 9.3.0 | Redux 綁定層 | 提供 `useSelector` / `useDispatch`，與 React 18+ 並行渲染相容 |
-| **React Context** | 內建 | 登入狀態管理 | 認證狀態更新頻率低，不需 Redux 的效能優化，Context 已足夠 |
+| **React Context** | 內建 | 登入狀態管理 | React 內建的跨元件狀態傳遞機制，無需額外套件；無選擇性訂閱，Provider 值變動時其下所有消費者皆重新渲染 |
 | **Axios** | 1.15.0 | HTTP 客戶端 | 攔截器機制讓 JWT 注入與 CSRF token 處理集中在單一位置，避免重複程式碼 |
 | **js-cookie** | 3.0.5 | Cookie 讀取 | 讀取 `XSRF-TOKEN` cookie，API 比原生 `document.cookie` 簡潔 |
 | **Stripe JS / React Stripe** | 9.4.0 / 6.3.0 | 付款 UI | PCI-DSS 合規的嵌入式表單元件，卡號資料直接傳至 Stripe，後端不經手敏感資訊 |
@@ -657,7 +655,7 @@ public abstract class BaseEntity {
 
 ### 後端
 
-| 技術 | 版本 | 用途 | 選用理由 |
+| 技術 | 版本 | 用途 | 特性 |
 |------|------|------|----------|
 | **Spring Boot** | 4.1.1 | 應用框架 | 自動配置降低設定成本，與 Spring 生態系深度整合（Security、Data JPA、Actuator） |
 | **Spring Framework** | 7.0.9 | 核心容器 | 由 Boot 4.1.1 管理，基線為 Jakarta EE 11 |
@@ -677,73 +675,6 @@ public abstract class BaseEntity {
 | **Spring Boot Actuator** | — | 健康檢查 | `/actuator/health` 公開，其餘路徑限 ADMIN，適用於 K8s liveness probe |
 | **Spring Boot DevTools** | — | 開發體驗 | 程式碼變更自動重啟，縮短回饋循環 |
 | **Maven** | 3.9+ | 建構工具 | 成熟穩定的依賴管理，內附 Maven Wrapper (`mvnw`) 免安裝 |
-
-### Spring Boot 4 升級注意事項
-
-本專案已由 Spring Boot 3.5.14 升級至 4.1.1，以下為升級過程中需要處理、且會影響後續維護的幾點。
-
-**1. Jackson 3 與 jjwt 的相依衝突**
-
-Boot 4 預設改用 Jackson 3（套件名為 `tools.jackson`），不再提供 Jackson 2。但 `jjwt-jackson` 0.13.0（目前最新版）仍相依 Jackson 2 的 `com.fasterxml.jackson.core:jackson-databind`，缺少時**簽發 JWT 會在執行期拋 `NoClassDefFoundError`**。
-
-所幸 Boot 4 的 BOM 仍同時管理 Jackson 2（`jackson-2-bom` 2.21.5），因此 `pom.xml` 只需補上免版本號的相依即可：
-
-```xml
-<dependency>
-    <groupId>com.fasterxml.jackson.core</groupId>
-    <artifactId>jackson-databind</artifactId>
-    <scope>runtime</scope>
-</dependency>
-```
-
-待 jjwt 推出支援 Jackson 3 的版本後即可移除。
-
-**2. JSON 欄位順序改變（行為變更）**
-
-Jackson 3 會將 `@Data` 等一般 POJO 的欄位以**字母順序**輸出，Java Record 則維持宣告順序。例如 `UserDto`：
-
-```jsonc
-// Boot 3 / Jackson 2
-{ "id": 1, "name": "Admin", "email": "...", "address": { ... } }
-
-// Boot 4 / Jackson 3
-{ "address": { ... }, "email": "...", "id": 1, "name": "Admin" }
-```
-
-前端以具名解構（`const { message, user, jwtToken } = response.data`）取值，不依賴欄位順序，因此不受影響。若有外部串接方對順序有假設，需另行確認。
-
-**3. Spring Security 版本覆寫**
-
-Boot 4.1.1 原生搭配 Spring Security 7.1.1，本專案在 `pom.xml` 明確覆寫為 7.1.0：
-
-```xml
-<spring-security.version>7.1.0</spring-security.version>
-```
-
-移除該屬性即可回到 Boot 原生管理的 7.1.1。
-
-**4. 隨升級一併清理的項目**
-
-| 項目 | 原因 |
-|------|------|
-| 移除 `MySecurityConfig` 的 `userDetailsService` 記憶體 bean | Security 7 啟動時警告其與 `MyAuthenticationProvider` 衝突；該 bean 原本即未參與登入驗證，屬死碼 |
-| 移除 `spring.jpa.database-platform` | Hibernate 7 會依 JDBC 連線自動判斷方言，明確指定會觸發 `HHH90000025` deprecation 警告 |
-| Caffeine 快取加上 `recordStats()` | 未開啟時 Actuator 僅能取得 `cache.size`，並於啟動時發出警告 |
-| prod profile 關閉 springdoc 端點 | springdoc 3 預設開啟 `/v3/api-docs` 與 `/swagger-ui.html` |
-
-**5. `spring.jpa.open-in-view` 的啟動警告**
-
-Boot 4 啟動時會出現：
-
-```
-spring.jpa.open-in-view is enabled by default. Therefore, database queries
-may be performed during view rendering. Explicitly configure
-spring.jpa.open-in-view to disable this warning
-```
-
-重點在最後一句 —— Spring Boot 要的是**顯式宣告**，不是一定要你關閉。本專案選擇寫上 `spring.jpa.open-in-view=true` 保留預設行為，警告即消失。
-
-若要改為 `false`，實測會讓 `/api/v1/orders` 與 `/api/v1/admin/orderManage` 回 500 （`Cannot lazily initialize collection of role 'Order.orderItems' - no session`），因為 `Order.orderItems` 為 LAZY 而 DTO 組裝發生在交易之外。`OrderServiceImpl` 的 `getCustomerOrders()` 與 `getAllPendingOrders()` 已補上 `@Transactional(readOnly = true)`（這兩個是唯一會走到 `order.getOrderItems()` 的進入點），因此改為 `false` 也可正常運作 —— 兩種設定皆已實測通過。
 
 ---
 
@@ -803,72 +734,48 @@ npm run dev
 > 透過 `/register` 自行註冊的帳號僅取得 `ROLE_USER`，無法存取 `/api/v1/admin/**`。
 > 登入以 **email 作為帳號**（`MyAuthenticationProvider` 依 email 查詢）。
 
-### 以 curl 直接呼叫 API
+### H2 Console 與 Swagger UI
 
-登入端點雖為公開路徑，但**未豁免 CSRF**，直接 POST 會得到 403。正確順序是先取 `XSRF-TOKEN` cookie，再帶著 `X-XSRF-TOKEN` 送出（這正是 `apiClient.js` 攔截器在做的事）：
+兩者都是「用瀏覽器直接開」的後端工具。由於本專案的 API 走無狀態 JWT，而瀏覽器在網址列輸入 URL 時無法附帶 `Authorization` 標頭，因此另外啟用了 `formLogin()`，讓這類工具可透過 session 登入。
 
-```bash
-# 1. 取得 CSRF token 並存入 cookie jar
-TOKEN=$(curl -s -c cookies.txt http://localhost:8080/api/v1/csrf-token \
-        | sed -E 's/.*"token":"([^"]+)".*/\1/')
+| 工具 | 網址 |
+|------|------|
+| H2 Console | `http://localhost:8080/h2-console` |
+| Swagger UI | `http://localhost:8080/swagger-ui/index.html` |
+| OpenAPI JSON | `http://localhost:8080/v3/api-docs` |
 
-# 2. 登入，取得 JWT（userName 傳入 email）
-curl -s -b cookies.txt -X POST http://localhost:8080/api/v1/auth/login \
-     -H "Content-Type: application/json" \
-     -H "X-XSRF-TOKEN: $TOKEN" \
-     -d '{"userName":"admin@gmail.com","password":"1234"}'
+**使用方式**：直接開啟上述任一網址 → 自動導向 `/login`（Spring Security 預設登入頁）→ 以 `admin@gmail.com` / `1234` 登入 → 自動跳回原本要去的頁面。
 
-# 3. 以 JWT 呼叫受保護端點
-curl -s -H "Authorization: Bearer <上一步取得的 jwtToken>" \
-     http://localhost:8080/api/v1/profile
-```
-
-商品列表為公開端點，不需任何認證：
-
-```bash
-curl -s http://localhost:8080/api/v1/products
-```
-
-### H2 Console 與 Swagger UI 的實際存取方式
-
-> **⚠️ 這兩者目前無法直接用瀏覽器開啟。** 以下為實測結果，非設計預期。
-
-`/h2-console` 與 `/swagger-ui/**` 都不在公開路徑清單中，而 `JWTTokenValidatorFilter` 對所有非公開路徑在缺少 `Authorization: Bearer` header 時就直接回 **401**，比 `formLogin` / `httpBasic` 更早執行。瀏覽器在網址列輸入 URL 無法附帶該 header，因此：
-
-| 路徑 | 匿名 | 帶 Bearer JWT | 瀏覽器可用？ |
-|------|------|--------------|------------|
-| `/actuator/health` | 200 | 200 | ✅ |
-| `/h2-console/` | 401 | 200 | ❌ 另受 `X-Frame-Options: DENY` 阻擋 frame，且 `login.do` 的 POST 會被 CSRF 擋下（403） |
-| `/swagger-ui/index.html` | 401 | 200 | ❌ 頁面本身載入不了 |
-| `/v3/api-docs` | 401 | 200 | ❌ |
-
-**查看資料庫的可行做法** — `application.properties` 的 JDBC URL 帶有 `AUTO_SERVER=true`，即使應用程式正在執行，也能用外部工具直接連線同一個檔案資料庫：
-
-```bash
-# 以 H2 內附的 Shell 查詢（jar 位於本機 Maven repository）
-cd backend
-java -cp ~/.m2/repository/com/h2database/h2/2.4.240/h2-2.4.240.jar org.h2.tools.Shell \
-  -url "jdbc:h2:file:./h2db/myDb;AUTO_SERVER=TRUE" -user sa -password "" \
-  -sql "SELECT COUNT(*) FROM products;"
-```
-
-或在 IntelliJ IDEA Database、DBeaver 等工具中新增 H2 連線：
+H2 Console 的連線資訊：
 
 | 欄位 | 值 |
 |------|----|
-| JDBC URL | `jdbc:h2:file:<專案路徑>/backend/h2db/myDb;AUTO_SERVER=TRUE` |
+| JDBC URL | `jdbc:h2:file:./h2db/myDb` |
 | 帳號（Username） | `sa` |
 | 密碼（Password） | （空白，不填） |
 
-**查看 API 文件的可行做法** — 直接取得 OpenAPI JSON：
+實測結果：
 
-```bash
-curl -H "Authorization: Bearer <你的 JWT>" http://localhost:8080/v3/api-docs
-```
+| 路徑 | 匿名 | 表單登入後 |
+|------|------|-----------|
+| `/h2-console/` | 302 → `/login` | 200（`login.do` 連線成功） |
+| `/swagger-ui/index.html` | 302 → `/login` | 200 |
+| `/v3/api-docs` | 302 → `/login` | 200（OpenAPI 3.1.0） |
+| `/actuator/env` | 302 → `/login` | 200 |
 
-將輸出存成檔案後匯入 Postman / Insomnia，或貼到 [Swagger Editor](https://editor.swagger.io/) 檢視。
+**讓這些工具能運作的四項設定**（缺一不可）：
 
-**若要讓兩者恢復瀏覽器可用**，需修改 `MySecurityConfig`：將 `/h2-console/**`、`/swagger-ui/**`、`/v3/api-docs/**` 加入 `PublicPathConfig`（或至少讓 JWT filter 略過），並補上 `http.headers(h -> h.frameOptions(f -> f.sameOrigin()))` 與 `/h2-console/**` 的 CSRF 豁免。本專案尚未套用此變更。
+| 設定 | 位置 | 沒有它會怎樣 |
+|------|------|------------|
+| `spring-boot-h2console` 相依 | `pom.xml` | Boot 4 把 H2 Console 的自動組態拆成獨立模組，缺少時 `spring.h2.console.enabled=true` **靜默失效**，`/h2-console` 落到 DispatcherServlet 回 500 |
+| `formLogin()` | `MySecurityConfig` | 無法用瀏覽器取得 session，只能靠 Bearer token |
+| `ignoringRequestMatchers(PathRequest.toH2Console())` | `MySecurityConfig` | H2 Console 的 `login.do` 是一般 form POST，不帶 `X-XSRF-TOKEN` → 403 |
+| `frameOptions().sameOrigin()` | `MySecurityConfig` | 預設 `DENY` 會擋掉 H2 Console 的 frameset，畫面空白 |
+
+> 另一種查資料的方式：`application.properties` 的 JDBC URL 帶有 `AUTO_SERVER=true`，**應用程式執行中**也能用 IntelliJ Database、DBeaver 或 H2 Shell 連同一個檔案資料庫，不必經過 HTTP。
+>
+> ⚠️ prod profile 已設 `spring.h2.console.enabled=false` 與 `springdoc.*.enabled=false`，這些工具僅在開發環境可用。
+
 
 ### Stripe 測試刷卡資訊
 
@@ -948,7 +855,7 @@ npm run lint            # ESLint 檢查
 
 ### API 文件
 
-所有端點前綴為 `/api/v1`。後端另提供 SpringDoc 產生的完整規格（均需 ADMIN 身份，且**須以 Bearer JWT 存取**，無法直接用瀏覽器開啟 —— 原因與取用方式見[此節](#h2-console-與-swagger-ui-的實際存取方式)）：
+所有端點前綴為 `/api/v1`。後端另提供 SpringDoc 產生的完整規格，均需 ADMIN 身份（瀏覽器開啟時會先導向表單登入，見[此節](#h2-console-與-swagger-ui)）：
 
 | 用途 | URL |
 |------|-----|
@@ -1135,8 +1042,6 @@ npm run lint            # ESLint 檢查
 | **容器化** | 無 Dockerfile / docker-compose | 補前後端 Dockerfile 與一鍵啟動的 compose 設定 |
 | **遺留程式碼** | `src/store/cart-context.jsx` 為遷移至 Redux 前的實作，`CheckoutForm.jsx` 仍同時引用 Context 與 Redux selector | 統一收斂至 Redux，移除 Context 版本 |
 | **前端 Admin 守衛** | `ProtectedRoute` 僅檢查登入狀態，未檢查 ADMIN 角色（安全性由後端保證，但 UX 上會先看到 403） | 新增 `AdminRoute` 元件，前端先行攔截 |
-| **H2 Console / Swagger UI 不可用** | `JWTTokenValidatorFilter` 對非公開路徑無 Bearer token 即回 401，早於 `formLogin` / `httpBasic`；加上 `X-Frame-Options: DENY` 與 CSRF，瀏覽器完全無法開啟這兩個工具 | 將相關路徑加入 `PublicPathConfig`、設定 `frameOptions.sameOrigin()`、為 `/h2-console/**` 豁免 CSRF |
-| **`formLogin` / `httpBasic` 為無效設定** | `MySecurityConfig` 有啟用，但永遠不會被觸發（同上原因） | 移除以免誤導，或調整 filter 順序讓其真正生效 |
 | **JWT 效期偏短** | 20 分鐘，且無 refresh token 機制，閒置後需重新登入 | 導入 refresh token，或延長效期並加上滑動續期 |
 | **JWT 未帶 `customerId`** | 以 `email` 作為 principal，每次請求需依 email 反查使用者 | 於 claims 加入 `customerId`，減少查詢 |
 | **交易邊界僅涵蓋訂單查詢** | 已為 `OrderServiceImpl` 的兩個查詢方法補上 `@Transactional(readOnly = true)`；但 `createOrder()`、`updateOrderStatus()` 等寫入方法仍未標註，多個 repository 操作非單一原子單位。OSIV 維持開啟（`true`），LAZY 關聯的載入時機因此較寬鬆 | 為寫入方法補上 `@Transactional`；查詢端可再用 `JOIN FETCH` / `@EntityGraph` 消除 N+1 |
