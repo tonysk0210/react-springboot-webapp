@@ -292,11 +292,16 @@ backend/src/main/resources/
 
 ```mermaid
 erDiagram
-    CUSTOMERS ||--o| ADDRESS     : "address.customer_id UNIQUE NOT NULL"
-    CUSTOMERS }o--o{ ROLES       : "customer_roles"
-    CUSTOMERS ||--o{ ORDERS      : "orders.customer_id NOT NULL"
-    ORDERS    ||--o{ ORDER_ITEMS : "order_items.order_id NOT NULL"
-    PRODUCTS  ||--o{ ORDER_ITEMS : "order_items.product_id NOT NULL"
+    CUSTOMERS ||--o| ADDRESS        : "address.customer_id UNIQUE NOT NULL"
+    CUSTOMERS ||--o{ CUSTOMER_ROLES : "customer_roles.customer_id"
+    ROLES     ||--o{ CUSTOMER_ROLES : "customer_roles.role_id"
+    CUSTOMERS ||--o{ ORDERS         : "orders.customer_id NOT NULL"
+    ORDERS    ||--o{ ORDER_ITEMS    : "order_items.order_id NOT NULL"
+    PRODUCTS  ||--o{ ORDER_ITEMS    : "order_items.product_id NOT NULL"
+    CUSTOMER_ROLES {
+        bigint customer_id PK "FK → CUSTOMERS，ON DELETE CASCADE"
+        bigint role_id PK "FK → ROLES，ON DELETE CASCADE"
+    }
     CONTACTS {
         bigint contact_id
         string status "OPEN / CLOSED"
@@ -314,7 +319,7 @@ erDiagram
 | 關聯 | 讀法 | 外鍵位置 |
 |---|---|---|
 | `CUSTOMERS \|\|--o\| ADDRESS` | 一位客戶最多一筆地址；**註冊時不填，之後在個人檔案補** | `address.customer_id` **NOT NULL + UNIQUE** |
-| `CUSTOMERS }o--o{ ROLES` | 一位客戶可有多個角色，一個角色可給多人 | 中介表 `customer_roles` |
+| `CUSTOMERS \|\|--o{ CUSTOMER_ROLES`<br/>`ROLES \|\|--o{ CUSTOMER_ROLES` | 兩條合起來構成多對多：一位客戶可有多個角色，一個角色可給多人 | 中介表 `customer_roles`，<br/>兩欄皆為 FK |
 | `CUSTOMERS \|\|--o{ ORDERS` | 一位客戶可有多筆訂單；**每筆訂單一定屬於某位客戶** | `orders.customer_id` **NOT NULL** |
 | `ORDERS \|\|--o{ ORDER_ITEMS` | 一筆訂單含多個品項 | `order_items.order_id` **NOT NULL** |
 | `PRODUCTS \|\|--o{ ORDER_ITEMS` | 一個商品可出現在多筆訂單明細中 | `order_items.product_id` **NOT NULL** |
@@ -367,11 +372,12 @@ private Order order;
 private Product product;
 ```
 
-三個補充重點：
+四個補充重點：
 
 1. **沒有單一中心表** —— 外鍵分別落在 `ADDRESS`、`customer_roles`、`ORDERS`、`ORDER_ITEMS` 四處。整張圖實際上是兩個群組：以 `CUSTOMERS` 為核心的帳號群（地址、角色），以及 `ORDERS → ORDER_ITEMS → PRODUCTS` 的訂單鏈，兩者靠 `orders.customer_id` 相接。
-2. **`Customer.address` 是 inverse side** —— 判準是「誰身上有 `@JoinColumn`」，而 `@JoinColumn` 在 `Address` 上。所以 `Customer` 標的是 `mappedBy = "customer"`，僅為唯讀視角；真正寫入 `address.customer_id` 的是儲存 `Address` 的動作。`cascade = ALL` 讓儲存／刪除 `Customer` 時連帶處理其 `Address`。
-3. **三個 `@OnDelete(RESTRICT)` 是刻意的** —— 訂單與訂單明細指向的來源（客戶、訂單、商品）都禁止刪除，以免歷史訂單失去參照。這與 `schema.sql` 一致：`ADDRESS` 與 `CUSTOMER_ROLES` 有 `ON DELETE CASCADE`，但 `ORDERS` 沒有。
+2. **`customer_roles` 是純中介表** —— 只有 `customer_id` + `role_id` 兩欄，並以兩者為**複合主鍵**，因此同一位客戶無法被重複指派同一個角色（資料庫層級就擋掉）。它**沒有對應的 JPA Entity**，由 `@JoinTable` 直接操作；也因此**不繼承 `BaseEntity`**，是全專案唯一沒有稽核欄位的資料表。兩個外鍵都設了 `ON DELETE CASCADE`，刪除客戶或角色時關聯會自動清除。
+3. **`Customer.address` 是 inverse side** —— 判準是「誰身上有 `@JoinColumn`」，而 `@JoinColumn` 在 `Address` 上。所以 `Customer` 標的是 `mappedBy = "customer"`，僅為唯讀視角；真正寫入 `address.customer_id` 的是儲存 `Address` 的動作。`cascade = ALL` 讓儲存／刪除 `Customer` 時連帶處理其 `Address`。
+4. **三個 `@OnDelete(RESTRICT)` 是刻意的** —— 訂單與訂單明細指向的來源（客戶、訂單、商品）都禁止刪除，以免歷史訂單失去參照。這與 `schema.sql` 一致：`ADDRESS` 與 `CUSTOMER_ROLES` 有 `ON DELETE CASCADE`，但 `ORDERS` 沒有。
 
 | 類別 | 類型 | 注意事項 |
 |---|---|---|
@@ -1153,7 +1159,7 @@ npm run lint            # ESLint 檢查
 | `ORDER_ITEMS` | order_item_id | order_id FK, product_id FK, quantity, price | 快照下單當下商品價格，與 `PRODUCTS` 解耦 |
 | `CONTACTS` | contact_id | status (`OPEN` / `CLOSED`) | 聯絡表單，管理員可標記為 `CLOSED` |
 
-所有資料表均繼承 `BaseEntity` 的四個稽核欄位：`created_at`、`updated_at`、`created_by`、`updated_by`。
+除 `CUSTOMER_ROLES` 外，所有資料表均繼承 `BaseEntity` 的四個稽核欄位：`created_at`、`updated_at`、`created_by`、`updated_by`。`CUSTOMER_ROLES` 為純中介表（複合主鍵 + 兩個外鍵），無對應 Entity，故不帶稽核欄位。
 
 > `ROLE_OP` 存在於種子資料且已指派給 admin 帳號，但目前 `MySecurityConfig` 的授權規則並未使用它 — 屬於預留角色。
 
