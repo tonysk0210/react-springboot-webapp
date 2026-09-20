@@ -326,7 +326,7 @@ erDiagram
 | 關聯 | 讀法 | 外鍵位置 |
 |---|---|---|
 | `CUSTOMERS \|\|--o\| ADDRESS` | 一位客戶最多一筆地址；**註冊時不填，之後在個人檔案補** | `address.customer_id` **NOT NULL + UNIQUE** |
-| `CUSTOMERS \|\|--o{ CUSTOMER_ROLES`<br/>`ROLES \|\|--o{ CUSTOMER_ROLES` | 兩條合起來構成多對多：一位客戶可有多個角色，一個角色可給多人 | 中介表 `customer_roles`，<br/>兩欄皆為 FK |
+| `CUSTOMERS \|\|--o{ CUSTOMER_ROLES`<br/>`ROLES \|\|--o{ CUSTOMER_ROLES` | 兩條合起來構成多對多：一位客戶可有多個角色，一個角色可給多人 | 中介表 `customer_roles`（`customers` 表**不含** `role_id`）<br/>owning side：`Customer.roles` 的 `@JoinTable` |
 | `CUSTOMERS \|\|--o{ ORDERS` | 一位客戶可有多筆訂單；**每筆訂單一定屬於某位客戶** | `orders.customer_id` **NOT NULL** |
 | `ORDERS \|\|--o{ ORDER_ITEMS` | 一筆訂單含多個品項 | `order_items.order_id` **NOT NULL** |
 | `PRODUCTS \|\|--o{ ORDER_ITEMS` | 一個商品可出現在多筆訂單明細中 | `order_items.product_id` **NOT NULL** |
