@@ -299,11 +299,18 @@ erDiagram
     ORDERS    ||--o{ ORDER_ITEMS    : "order_items.order_id NOT NULL"
     PRODUCTS  ||--o{ ORDER_ITEMS    : "order_items.product_id NOT NULL"
     CUSTOMER_ROLES {
-        bigint customer_id PK "FK → CUSTOMERS，ON DELETE CASCADE"
-        bigint role_id PK "FK → ROLES，ON DELETE CASCADE"
+        bigint customer_id PK "FK，ON DELETE CASCADE"
+        bigint role_id PK "FK，ON DELETE CASCADE"
+    }
+    ORDER_ITEMS {
+        bigint order_item_id PK "代理鍵"
+        bigint order_id FK "RESTRICT"
+        bigint product_id FK "RESTRICT"
+        int quantity "自身欄位"
+        decimal price "下單當下的單價快照"
     }
     CONTACTS {
-        bigint contact_id
+        bigint contact_id PK
         string status "OPEN / CLOSED"
     }
 ```
@@ -375,7 +382,19 @@ private Product product;
 四個補充重點：
 
 1. **沒有單一中心表** —— 外鍵分別落在 `ADDRESS`、`customer_roles`、`ORDERS`、`ORDER_ITEMS` 四處。整張圖實際上是兩個群組：以 `CUSTOMERS` 為核心的帳號群（地址、角色），以及 `ORDERS → ORDER_ITEMS → PRODUCTS` 的訂單鏈，兩者靠 `orders.customer_id` 相接。
-2. **`customer_roles` 是純中介表** —— 只有 `customer_id` + `role_id` 兩欄，並以兩者為**複合主鍵**，因此同一位客戶無法被重複指派同一個角色（資料庫層級就擋掉）。它**沒有對應的 JPA Entity**，由 `@JoinTable` 直接操作；也因此**不繼承 `BaseEntity`**，是全專案唯一沒有稽核欄位的資料表。兩個外鍵都設了 `ON DELETE CASCADE`，刪除客戶或角色時關聯會自動清除。
+2. **`CUSTOMER_ROLES` 與 `ORDER_ITEMS` 結構相同但性質不同** —— 兩者在圖上都是「兩條 `\|\|--o{` 指向中間表」，但只有後者是獨立的 Entity：
+
+   | | `CUSTOMER_ROLES` | `ORDER_ITEMS` |
+   |---|---|---|
+   | 定位 | **純中介表**（pure join table） | **關聯實體**（association entity） |
+   | 主鍵 | 複合主鍵 `(customer_id, role_id)` | 代理鍵 `order_item_id` |
+   | 自身欄位 | 無 | `quantity`、`price` |
+   | 稽核欄位 | **無**（全專案唯一） | 有，繼承 `BaseEntity` |
+   | JPA | 無 Entity，`@ManyToMany` + `@JoinTable` | `OrderItem` Entity，`@OneToMany` + 兩個 `@ManyToOne` |
+   | 重複組合 | 複合主鍵擋掉 | 允許（代理鍵不同） |
+   | 刪除來源 | `ON DELETE CASCADE`，關聯自動清除 | `RESTRICT`，禁止刪除以保全歷史訂單 |
+
+   判準很單純：**中介表自己有沒有業務資料**。`order_items` 必須記錄「買了幾個、當時單價多少」，所以它得是 Entity；`customer_roles` 只是把客戶和角色連起來，不需要。
 3. **`Customer.address` 是 inverse side** —— 判準是「誰身上有 `@JoinColumn`」，而 `@JoinColumn` 在 `Address` 上。所以 `Customer` 標的是 `mappedBy = "customer"`，僅為唯讀視角；真正寫入 `address.customer_id` 的是儲存 `Address` 的動作。`cascade = ALL` 讓儲存／刪除 `Customer` 時連帶處理其 `Address`。
 4. **三個 `@OnDelete(RESTRICT)` 是刻意的** —— 訂單與訂單明細指向的來源（客戶、訂單、商品）都禁止刪除，以免歷史訂單失去參照。這與 `schema.sql` 一致：`ADDRESS` 與 `CUSTOMER_ROLES` 有 `ON DELETE CASCADE`，但 `ORDERS` 沒有。
 
