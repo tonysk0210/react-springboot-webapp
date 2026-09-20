@@ -174,7 +174,7 @@ flowchart TB
 
     CSRFR["CookieCsrfTokenRepository<br/>XSRF-TOKEN"]
 
-    Cache["Caffeine Cache<br/>products 30min / roles 1day"]
+    Cache["Caffeine Cache<br/>products 10min / roles 1day"]
     DB[("H2 file-based（dev）<br/>MySQL（prod）")]
     Stripe["Stripe API<br/>PaymentIntent"]
 
@@ -242,7 +242,7 @@ frontend/
 backend/src/main/java/com/example/backend/
 ├── BackendApplication.java
 ├── config/
-│   ├── CaffeineCacheConfig.java     products TTL 30min；roles TTL 1 day
+│   ├── CaffeineCacheConfig.java     products TTL 10min；roles TTL 1 day
 │   ├── AuditorAwareImpl.java        從 SecurityContext 取 email 作為 auditor
 │   ├── CorsConfig.java              allowedOrigins 由 application.properties 注入
 │   └── StripeConfig.java            @PostConstruct 初始化 Stripe.apiKey
@@ -382,7 +382,7 @@ private Product product;
 四個補充重點：
 
 1. **沒有單一中心表** —— 外鍵分別落在 `ADDRESS`、`customer_roles`、`ORDERS`、`ORDER_ITEMS` 四處。整張圖實際上是兩個群組：以 `CUSTOMERS` 為核心的帳號群（地址、角色），以及 `ORDERS → ORDER_ITEMS → PRODUCTS` 的訂單鏈，兩者靠 `orders.customer_id` 相接。
-2. **`CUSTOMER_ROLES` 與 `ORDER_ITEMS` 結構相同但性質不同** —— 兩者在圖上都是「兩條 `\|\|--o{` 指向中間表」，但只有後者是獨立的 Entity：
+2. **`CUSTOMER_ROLES` 與 `ORDER_ITEMS` 結構相同但性質不同** —— 兩者在圖上都是「兩條 `||--o{` 指向中間表」，但只有後者是獨立的 Entity：
 
    | | `CUSTOMER_ROLES` | `ORDER_ITEMS` |
    |---|---|---|
@@ -396,45 +396,42 @@ private Product product;
 
    判準很單純：**中介表自己有沒有業務資料**。`order_items` 必須記錄「買了幾個、當時單價多少」，所以它得是 Entity；`customer_roles` 只是把客戶和角色連起來，不需要。
 3. **`Customer.address` 是 inverse side** —— 判準是「誰身上有 `@JoinColumn`」，而 `@JoinColumn` 在 `Address` 上。所以 `Customer` 標的是 `mappedBy = "customer"`，僅為唯讀視角；真正寫入 `address.customer_id` 的是儲存 `Address` 的動作。`cascade = ALL` 讓儲存／刪除 `Customer` 時連帶處理其 `Address`。
-4. **三個 `@OnDelete(RESTRICT)` 是刻意的** —— 訂單與訂單明細指向的來源（客戶、訂單、商品）都禁止刪除，以免歷史訂單失去參照。這與 `schema.sql` 的外鍵宣告一致：
-
-   | 子表 | `ON DELETE` 子句 | 刪除父列時 |
-   |---|---|---|
-   | `address` | `CASCADE` | 連帶刪除 |
-   | `customer_roles` | `CASCADE` | 連帶刪除 |
-   | `orders` | **省略** | **擋下刪除**（省略等同 `NO ACTION`／RESTRICT） |
-   | `order_items` | **省略** | **擋下刪除** |
-
-   所以有訂單的客戶刪不掉、有明細的訂單刪不掉、被訂購過的商品也刪不掉 —— 資料庫會直接拋出外鍵違反錯誤，而非靜默忽略。另註：因 `ddl-auto` 實際為 `none`，`@OnDelete` 不會產生任何 DDL，它只是把設計意圖寫在程式碼裡，真正生效的是 `schema.sql`。
+4. **三個 `@OnDelete(RESTRICT)` 是刻意的** —— 訂單與訂單明細指向的來源（客戶、訂單、商品）都禁止刪除，以免歷史訂單失去參照。
 
 | 類別 | 類型 | 注意事項 |
 |---|---|---|
 | `Customer` | JPA Entity | `roles` 為 **EAGER**；`address` 未指定 fetch，`@OneToOne` 預設也是 **EAGER** → 載入一次會連帶發出數筆 SQL |
 | `Order` | JPA Entity | `orderItems` 為 **LAZY**（`@OneToMany` 預設）—— 這是 OSIV 不能關閉的原因，詳見下方 |
-| `Address`、`OrderItem`、`Product`、`Contact` | JPA Entity | 關聯皆明示 `LAZY` |
-| `Role` | JPA Entity | ⚠️ 第 28–32 行保留**已註解**的 `@ManyToOne Customer`（舊的一對多設計）。`ROLES` 表並無 `customer_id` 欄位，**勿解除註解** |
+| `Address`、`OrderItem` | JPA Entity | 關聯皆明示 `LAZY`（`Address` 1 個、`OrderItem` 2 個） |
+| `Product` | JPA Entity | **自身未宣告任何關聯** —— 被 `OrderItem.product` 單向參照，未設 inverse side（`Product` 上沒有 `orderItems` 集合） |
+| `Contact` | JPA Entity | **完全獨立**，無任何外鍵進出 |
+| `Role` | JPA Entity | `customers` 為 inverse side（`mappedBy = "roles"`），`@ManyToMany` 預設 **LAZY** |
 | `BaseEntity` | `@MappedSuperclass` | 稽核欄位 `createdAt` / `createdBy` / `updatedAt` / `updatedBy` |
 
 #### 資料層重點
 
 - 開發環境使用 **H2 file-based**（`jdbc:h2:file:./h2db/myDb;AUTO_SERVER=true`），**資料會跨重啟保留** —— 與記憶體模式不同，devtools 熱重載或重新啟動都不會清空，手動建立的測試資料會一直累積。想重置就直接刪掉 `backend/h2db/` 整個目錄，下次啟動會依 `schema.sql` + `data.sql` 重建
-- `AUTO_SERVER=true` 允許**應用程式執行中**同時由外部工具連線同一個檔案資料庫（IntelliJ Database、DBeaver、H2 Shell 皆可）。這是目前查資料的主要手段 —— `/h2-console` 因 JWT filter 與 `X-Frame-Options: DENY` 實際上無法從瀏覽器開啟，詳見[此節](#h2-console-與-swagger-ui-的實際存取方式)
-- ⚠️ **`spring.jpa.hibernate.ddl-auto` 完全沒有設定**，且 file-based H2 不被 Spring Boot 視為 embedded，因此實際值為 **`none`** —— Hibernate **既不建表也不驗證**（啟動日誌零 DDL、資料自 2026-06-15 留存至今可佐證）。這代表 `sql/schema.sql` 是 schema 的唯一真相，而 **Entity 與 schema 不一致時不會在啟動時報錯**，要等到實際查詢該欄位才會炸出 SQL 例外。改欄位時務必同步修改 `sql/schema.sql` 與 `entity/` 底下的標註；若希望啟動即攔截，可自行加上 `spring.jpa.hibernate.ddl-auto=validate`
+- **`spring.jpa.hibernate.ddl-auto=validate`** —— Hibernate 在啟動時逐一比對每個 Entity 與實際資料表，**欄位缺失或型別不符會直接讓啟動失敗**；但它**只驗證，不建表也不修改任何結構**，因此 `sql/schema.sql` 仍是 schema 的唯一真相。⚠️ 改欄位時務必同步修改 `sql/schema.sql` 與 `entity/` 底下的標註，否則下次啟動就會被擋下。
+  - 此為基礎組態，**qa / prod 亦繼承**。prod 的 MySQL schema 若為手動建置且與 `schema.sql` 有落差，啟動會失敗 —— 要讓 prod 例外，在 `application-prod.properties` 加上 `spring.jpa.hibernate.ddl-auto=none`。
+  - 未設定時預設為 `none`（file-based H2 不被 Spring Boot 視為 embedded），那種情況下 Entity 與 schema 不同步**不會有任何警告**，要等到實際查詢該欄位才會拋出 SQL 例外。
+  - `validate` **不檢查外鍵的 `ON DELETE` 行為**，只看資料表、欄位與型別。
 - 初始資料 `sql/data.sql` 全部使用 **H2 專屬的 `MERGE INTO ... KEY(...)`**（共 35 條）達成冪等 upsert，重複啟動不會產生重複資料。⚠️ **這個語法在 MySQL 上不成立** —— prod profile 設定 `spring.sql.init.mode=never` 迴避了這點，所以**正式環境的 schema 與種子資料必須另行建置**，不能指望這兩個檔案
 - 種子資料內容：30 筆商品、3 個角色（`ROLE_ADMIN` / `ROLE_USER` / `ROLE_OP`）、1 個管理員（`admin@gmail.com`）、2 則示範留言。⚠️ `ROLE_OP` 已寫入且指派給管理員，但 `MySecurityConfig` 的授權規則**從未使用它**，屬預留角色
 - 所有 Entity 繼承 `entity/BaseEntity` 的四個稽核欄位（`Instant createdAt` / `updatedAt`、`String createdBy` / `updatedBy`），由 `@EnableJpaAuditing` + `config/AuditorAwareImpl` 自動填入。未登入時 auditor 回傳的是 **`"SYSTEM"`**；已登入時取 `Customer.email`。註冊這類未登入寫入流程即靠此機制才不會因 `created_by` 為 null 而失敗
 
 **Fetch 策略**（決定一次查詢會連帶撈出多少資料）
 
-| 關聯 | Fetch | 來源 |
-|------|-------|------|
-| `Customer.roles` → `Role` | **EAGER** | 明示；經 `customer_roles` 中介表 |
-| `Customer.address` → `Address` | **EAGER** | `@OneToOne` 未指定，採預設值 |
-| `Address.customer` | LAZY | 明示；owning side（FK 在 `ADDRESS`） |
-| `Order.customer` | LAZY | 明示 |
-| `Order.orderItems` → `OrderItem` | **LAZY** | `@OneToMany` 未指定，採預設值 |
-| `OrderItem.order` / `.product` | LAZY | 明示 |
-| `Role.customers` | LAZY | `@ManyToMany(mappedBy)` 預設 |
+| 關聯 | 實際註解 | Fetch | 來源 |
+|------|---------|-------|------|
+| `Customer.roles` → `Role` | `@ManyToMany(fetch = EAGER)` + `@JoinTable` | **EAGER** | 明示（覆寫掉 `@ManyToMany` 的 LAZY 預設） |
+| `Customer.address` → `Address` | `@OneToOne(mappedBy = "customer", cascade = ALL)` | **EAGER** | 未指定 → `@OneToOne` 預設即 EAGER |
+| `Address.customer` | `@OneToOne(fetch = LAZY, optional = false)` + `@JoinColumn` | LAZY | 明示；owning side（FK 在 `ADDRESS`） |
+| `Order.customer` | `@ManyToOne(fetch = LAZY, optional = false)` | LAZY | 明示（覆寫掉 `@ManyToOne` 的 EAGER 預設） |
+| `Order.orderItems` → `OrderItem` | `@OneToMany(mappedBy = "order", ...)` | **LAZY** | 未指定 → `@OneToMany` 預設即 LAZY |
+| `OrderItem.order` / `.product` | `@ManyToOne(fetch = LAZY, optional = false)` ×2 | LAZY | 明示 |
+| `Role.customers` | `@ManyToMany(mappedBy = "roles")` | LAZY | 未指定 → `@ManyToMany` 預設即 LAZY |
+
+> **`Address.customer` 的 LAZY 能真正生效，關鍵在 `optional = false`。** `@OneToOne` 的 owning side 若是 `optional = true`（預設），Hibernate 必須先查一次才知道關聯是否為 null，**LAZY 會被靜默忽略、退回 EAGER**。這裡明確標了 `optional = false`，代表「一定有對應的 Customer」，proxy 才能成立。
 
 - 載入一個 `Customer` 會**連帶發出 roles 與 address 的查詢**（兩者皆 EAGER），登入流程因此會有數筆 SQL。目前資料量下無妨，但若日後 `Customer` 出現在列表查詢中需留意 N+1
 - ⚠️ **`spring.jpa.open-in-view` 目前為預設的 `true`，不要為了消掉啟動 WARN 就把它關掉。** service 與 controller 層**完全沒有任何 `@Transactional`**，`Order.orderItems` 又是 LAZY，DTO 組裝發生在交易之外。實測以 `--spring.jpa.open-in-view=false` 啟動後，`/api/v1/orders` 與 `/api/v1/admin/orderManage` 直接回 500：
@@ -446,11 +443,8 @@ private Product product;
 
   真要關閉，必須先為查詢方法補上 `@Transactional(readOnly = true)` 或改用 fetch join / `@EntityGraph`
 
-- ⚠️ `ORDERS.customer_id` 的外鍵**沒有 `ON DELETE CASCADE`**（`ADDRESS` 與 `CUSTOMER_ROLES` 兩者皆有）。因此刪除一個已有訂單的客戶會在資料庫層被擋下，即使 `Customer.address` 標了 `cascade = ALL` 也一樣
 - `ORDER_ITEMS.price` 儲存的是**下單當下的單價快照**，與 `PRODUCTS.price` 解耦 —— 日後調整商品售價不會回頭改寫歷史訂單金額
-- ⚠️ 商品列表掛了 `@Cacheable("products")`，TTL 30 分鐘。**直接改資料庫的商品資料後，最長需等 30 分鐘前端才會看到變化**；開發時要立即生效請重啟應用程式
-- 主鍵一律 `@GeneratedValue(strategy = IDENTITY)` 搭配 schema 的 `BIGINT AUTO_INCREMENT`。`data.sql` 雖然明寫了 `customer_id = 1`、`role_id = 1~3`，H2 會自動推進識別序列，實測後續註冊的帳號取得 id 2~7，**不會發生主鍵衝突**
-- `entity/Role.java` 第 28–32 行保留了一段**已註解的 `@ManyToOne Customer customer`**（舊的一對多設計）。`ROLES` 表並無 `customer_id` 欄位，若誤將其解除註解，該關聯會在查詢時失敗
+- ⚠️ 商品列表掛了 `@Cacheable("products")`，TTL 10 分鐘。**直接改資料庫的商品資料後，最長需等 10 分鐘前端才會看到變化**；開發時要立即生效請重啟應用程式
 
 ---
 
@@ -574,7 +568,7 @@ JWT 與 CSRF 對應不同攻擊面，兩者並存：
 
 | 快取名稱 | TTL | 觸發條件 | 失效時機 |
 |---------|-----|---------|---------|
-| `products` | 30 分鐘 | `GET /api/v1/products` | TTL 到期後下次請求時重建 |
+| `products` | 10 分鐘 | `GET /api/v1/products` | TTL 到期後下次請求時重建 |
 | `roles` | 1 天 | 角色查詢 | TTL 到期後下次請求時重建 |
 
 商品資料為唯讀且更新頻率極低，快取可大幅減少 DB 查詢。角色資料幾乎不變，適合較長的 TTL。
@@ -750,7 +744,7 @@ public abstract class BaseEntity {
 | **Spring Data JPA / Hibernate** | 7.4.5 | ORM | Repository 介面自動生成 CRUD，搭配 JPA Auditing 實現稽核紀錄 |
 | **H2** | 2.4.240 | 開發資料庫 | 嵌入式資料庫（本專案用 file-based），無需安裝即可啟動 |
 | **MySQL Connector/J** | 9.7.0 | 生產資料庫 | Production profile 切換至 MySQL，透過環境變數注入連線設定 |
-| **Caffeine** | 3.2.4 | 記憶體快取 | JVM 本地快取，商品列表 TTL 30 分鐘，角色清單 TTL 1 天，避免頻繁查詢 DB |
+| **Caffeine** | 3.2.4 | 記憶體快取 | JVM 本地快取，商品列表 TTL 10 分鐘，角色清單 TTL 1 天，避免頻繁查詢 DB |
 | **Tomcat** | 11.0.24 | 內嵌容器 | 由 Boot 4 管理，對應 Jakarta Servlet 6.1 |
 | **Stripe Java SDK** | 32.1.0 | 支付處理 | 官方 SDK，後端僅建立 PaymentIntent 並回傳 clientSecret，不接觸卡號資料 |
 | **SpringDoc OpenAPI** | 3.1.1 | API 文件 | 3.x 才支援 Boot 4 / Framework 7（2.x 僅支援 Boot 3） |
