@@ -415,6 +415,8 @@ private Product product;
 - 初始資料 `sql/data.sql` 全部使用 **H2 專屬的 `MERGE INTO ... KEY(...)`**（共 35 條）達成冪等 upsert，重複啟動不會產生重複資料。⚠️ **這個語法在 MySQL 上不成立** —— prod profile 設定 `spring.sql.init.mode=never` 迴避了這點，所以**正式環境的 schema 與種子資料必須另行建置**，不能指望這兩個檔案
 - 種子資料內容：30 筆商品、3 個角色（`ROLE_ADMIN` / `ROLE_USER` / `ROLE_OP`）、1 個管理員（`admin@gmail.com`）、2 則示範留言。⚠️ `ROLE_OP` 已寫入且指派給管理員，但 `MySecurityConfig` 的授權規則**從未使用它**，屬預留角色
 - 所有 Entity 繼承 `entity/BaseEntity` 的四個稽核欄位（`Instant createdAt` / `updatedAt`、`String createdBy` / `updatedBy`），由 `@EnableJpaAuditing` + `config/AuditorAwareImpl` 自動填入。未登入時 auditor 回傳的是 **`"SYSTEM"`**；已登入時取 `Customer.email`。註冊這類未登入寫入流程即靠此機制才不會因 `created_by` 為 null 而失敗
+- `ORDER_ITEMS.price` 儲存的是**下單當下的單價快照**，與 `PRODUCTS.price` 解耦 —— 日後調整商品售價不會回頭改寫歷史訂單金額
+- ⚠️ 商品列表掛了 `@Cacheable("products")`，TTL 10 分鐘。**直接改資料庫的商品資料後，最長需等 10 分鐘前端才會看到變化**；開發時要立即生效請重啟應用程式
 
 **Fetch 策略**（決定一次查詢會連帶撈出多少資料）
 
@@ -427,11 +429,6 @@ private Product product;
 | `Order.orderItems` → `OrderItem` | `@OneToMany(mappedBy = "order", ...)` | **LAZY** | 未指定 → `@OneToMany` 預設即 LAZY |
 | `OrderItem.order` / `.product` | `@ManyToOne(fetch = LAZY, optional = false)` ×2 | LAZY | 明示 |
 | `Role.customers` | `@ManyToMany(mappedBy = "roles")` | LAZY | 未指定 → `@ManyToMany` 預設即 LAZY |
-
-- 載入一個 `Customer` 會**連帶發出 roles 與 address 的查詢**（兩者皆 EAGER），登入流程因此會有數筆 SQL。目前資料量下無妨，但若日後 `Customer` 出現在列表查詢中需留意 N+1
-
-- `ORDER_ITEMS.price` 儲存的是**下單當下的單價快照**，與 `PRODUCTS.price` 解耦 —— 日後調整商品售價不會回頭改寫歷史訂單金額
-- ⚠️ 商品列表掛了 `@Cacheable("products")`，TTL 10 分鐘。**直接改資料庫的商品資料後，最長需等 10 分鐘前端才會看到變化**；開發時要立即生效請重啟應用程式
 
 ---
 
