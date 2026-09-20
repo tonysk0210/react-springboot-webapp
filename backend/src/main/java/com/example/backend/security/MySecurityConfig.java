@@ -3,6 +3,7 @@ package com.example.backend.security;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.security.autoconfigure.web.servlet.PathRequest;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -22,6 +23,8 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import java.util.List;
+
+import static org.springframework.security.config.Customizer.withDefaults;
 
 @Configuration
 @EnableWebSecurity // 「我要開始用 Spring Security 保護我的 Web 應用」optional
@@ -49,7 +52,13 @@ public class MySecurityConfig {
                         // 讓 CSRF filter 在 request 中準備 token，供 CsrfController 取得並回傳。
                         .csrfTokenRequestHandler(new CsrfTokenRequestAttributeHandler())
                         // 聯絡表單免除 CSRF 檢查。
-                        .ignoringRequestMatchers("/api/v1/contacts", "/api/v1/contacts/**"));
+                        .ignoringRequestMatchers("/api/v1/contacts", "/api/v1/contacts/**")
+                        // H2 Console 的登入表單（login.do）為一般 form POST，不會帶 X-XSRF-TOKEN，需豁免。
+                        .ignoringRequestMatchers(PathRequest.toH2Console()));
+
+        // H2 Console 以 frameset 排版，預設的 X-Frame-Options: DENY 會導致畫面空白。改為 sameOrigin：僅允許同源內嵌，仍可防止外部網站以 iframe 包裝本站（clickjacking）。
+        http.headers(headersConfig ->
+                headersConfig.frameOptions(frameOptionsConfig -> frameOptionsConfig.sameOrigin()));
         /**
          * CSRF 流程：
          * 1. 前端沒有 token 時，先 GET /api/v1/csrf-token。
@@ -73,9 +82,11 @@ public class MySecurityConfig {
             request.anyRequest().hasAnyRole("USER", "ADMIN");
         });
 
-        // 4. 將自訂 JWT 驗證 filter 加入 Spring Security filter chain，並排在 BasicAuthenticationFilter 前面。讓 protected API 可以被授權訪問。
-        // 這樣帶有 Authorization: Bearer <token> 的 request 會先被 JWT filter 驗證，驗證成功後會把 Authentication 放進 SecurityContext，供後續授權規則使用。
+        // 4. 將自訂的 JWTTokenValidatorFilter 加入 Spring Security 的過濾器鏈，並安排在 BasicAuthenticationFilter 之前執行。
         http.addFilterBefore(new JWTTokenValidatorFilter(publicPaths), BasicAuthenticationFilter.class);
+
+        // 5. 表單登入：供 H2 Console 等「瀏覽器直接開啟」的工具取得 session。REST API 走 JWT 不受影響
+        http.formLogin(withDefaults());
 
         return http.build();
     }
