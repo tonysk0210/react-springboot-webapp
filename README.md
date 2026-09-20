@@ -753,15 +753,6 @@ H2 Console 的連線資訊：
 | 帳號（Username） | `sa` |
 | 密碼（Password） | （空白，不填） |
 
-實測結果：
-
-| 路徑 | 匿名 | 表單登入後 |
-|------|------|-----------|
-| `/h2-console/` | 302 → `/login` | 200（`login.do` 連線成功） |
-| `/swagger-ui/index.html` | 302 → `/login` | 200 |
-| `/v3/api-docs` | 302 → `/login` | 200（OpenAPI 3.1.0） |
-| `/actuator/env` | 302 → `/login` | 200 |
-
 **讓這些工具能運作的四項設定**（缺一不可）：
 
 | 設定 | 位置 | 沒有它會怎樣 |
@@ -772,8 +763,6 @@ H2 Console 的連線資訊：
 | `frameOptions().sameOrigin()` | `MySecurityConfig` | 預設 `DENY` 會擋掉 H2 Console 的 frameset，畫面空白 |
 
 > 另一種查資料的方式：`application.properties` 的 JDBC URL 帶有 `AUTO_SERVER=true`，**應用程式執行中**也能用 IntelliJ Database、DBeaver 或 H2 Shell 連同一個檔案資料庫，不必經過 HTTP。
->
-> ⚠️ prod profile 已設 `spring.h2.console.enabled=false` 與 `springdoc.*.enabled=false`，這些工具僅在開發環境可用。
 
 
 ### Stripe 測試刷卡資訊
@@ -834,19 +823,6 @@ npm run lint            # ESLint 檢查
 | `.env` | `http://localhost:8080/api/v1` | 本機開發（預設） |
 | `.env.dev` | `https://dev.stickerstore.com/api/v1` | Dev 測試環境 |
 | `.env.production` | `https://d1llf3j3ji3al9.cloudfront.net/api/v1` | CloudFront 生產環境 |
-
-### ⚠️ 部署前的安全檢查清單
-
-本專案為教學／作品展示用途，多項敏感設定以**明文預設值**提交在版本庫中，方便開箱即用。正式部署前務必處理：
-
-- [ ] **`JWT_SECRET`** — `ApplicationConstants.java` 內有明文預設值，須以環境變數覆寫為隨機長字串
-- [ ] **Stripe Secret Key** — `backend/src/main/resources/stripe.properties` 內含明文 `sk_test_...` 測試金鑰，須以 `STRIPE_API_KEY` 環境變數覆寫（建議一併在 Stripe Dashboard 輪替該金鑰）
-- [ ] **Stripe Publishable Key** — 硬編碼於 `frontend/src/main.jsx`，建議改為 `VITE_STRIPE_PUBLISHABLE_KEY` 環境變數
-- [ ] **CORS 來源** — `application-prod.properties` 未覆寫 `stickerstore.cors.allowed-origins`，須補上生產域名
-- [ ] **Actuator 暴露範圍** — 預設 `management.endpoints.web.exposure.include=*` 且 `env` / `configprops` 顯示實際值；雖已由 ADMIN 角色保護，生產環境建議收斂為必要端點
-- [ ] **H2 Console** — `application-prod.properties` 已設為 `false`，確認生效
-- [x] **API 文件端點** — Boot 4 升級時已於 prod profile 加入 `springdoc.api-docs.enabled=false` 與 `springdoc.swagger-ui.enabled=false`
-- [ ] **資料庫憑證** — prod profile 的 `DATABASE_USERNAME` / `DATABASE_PASSWORD` 預設值為 `root`/`root`，務必覆寫
 
 ---
 
