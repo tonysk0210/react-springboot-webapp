@@ -1,7 +1,7 @@
 import { createSlice } from "@reduxjs/toolkit";
 
 /**
-cart-slice.js
+cart-slice.js：定義「購物車有哪些資料、可以怎麼修改」
 定義 cart 的初始值、可用 actions、更新規則
 
 store.js
@@ -29,7 +29,7 @@ createSlice 會根據 reducers 裡的 addToCart reducer，
 
 const initialCart = JSON.parse(localStorage.getItem("cart")) || []; // 從 localStorage 中讀取購物車數據並解析成 JavaScript 對象
 
-// 1. 創建一個 Redux slice 來管理購物車狀態，需要指定 name、initialState 和 reducers
+// 1. 「定義購物車規則」創建一個 Redux slice 來管理購物車狀態，需要指定 name、initialState 和 reducers
 const cartSlice = createSlice({
   name: "cart", // slice 的名稱 用於 debug : cart/addToCart, cart/removeFromCart, cart/clearCart
   initialState: initialCart, // 初始狀態
@@ -82,7 +82,7 @@ export default cartSlice.reducer;
 
 // 3. 導出 selectors：這裡的 state 是 Redux store 目前的完整 state，是 useSelector(...) 呼叫 selector 時自動傳進來的。
 
-// 提供對購物車數據的訪問
+// 提供對購物車數據的訪問：state = Redux store 目前的完整狀態
 export const selectCartItems = (state) => state.cart; // 從 Redux 狀態中選擇購物車數據
 
 // 提供對購物車總數量的訪問

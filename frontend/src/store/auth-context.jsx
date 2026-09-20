@@ -7,7 +7,7 @@ export const useAuth = () => useContext(AuthContext);
 const LOGIN_SUCCESS = "LOGIN_SUCCESS";
 const LOGOUT = "LOGOUT";
 
-// 這邊使用立即執行函數來初始化 authState 狀態
+// 這邊使用立即執行函數來初始化 authState 狀態，因此重新整理頁面後，登入狀態可以被恢復。
 const initialAuthState = (() => {
   try {
     const jwtToken = localStorage.getItem("jwtToken"); // 取得 localStorage 中的 jwtToken
@@ -54,7 +54,10 @@ const authReducer = (currentState, action) => {
 
 // 3. 定義 AuthProvider 組件
 export const AuthProvider = ({ children }) => {
-  // 3.1 使用 useReducer 來管理 auth 狀態
+  // 3.1 使用 useReducer 來管理 auth 狀態：
+  //   authState → 目前登入狀態
+  //   dispatch  → 發送狀態更新要求
+  // authReducer → 決定新的狀態內容；authReducer 執行 dispatch 後返回的狀態
   const [authState, dispatch] = useReducer(authReducer, initialAuthState);
 
   // 3.2 監聽 authState 變化，並將其保存或從 localStorage 中移除

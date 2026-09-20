@@ -2,6 +2,8 @@ import { configureStore } from "@reduxjs/toolkit";
 import cartSliceReducer from "./cart-slice"; // 因為它是 default export，所以你可以自己命名成 cartReducer
 
 /**
+ * 建立「全域狀態中心」，真正保存目前的購物車資料
+ * 
  * 把 cartSlice.reducer 這個 reducer function
  * 註冊到 Redux store 裡的 cart 這個 state key 底下
  * 
@@ -15,7 +17,7 @@ import cartSliceReducer from "./cart-slice"; // 因為它是 default export，�
 // 1. 配置 Redux store 用於管理全局狀態
 const store = configureStore({
   reducer: {
-    cart: cartSliceReducer, // 將 cartSliceReducer 這個 reducer function 註冊到 Redux store 裡的 cart 這個 state key 底下
+    cart: cartSliceReducer, // 將 cartSliceReducer 這個 reducer function 註冊到 Redux store 裡的 cart 這個 state key 底下（所以最後 Redux state 會變成：state = { cart: [...] })
   },
 });
 
