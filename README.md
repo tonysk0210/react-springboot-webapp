@@ -1,13 +1,14 @@
 # StickerStore — 生產級全端電商系統
 
 ![React](https://img.shields.io/badge/React-19.2-61DAFB?logo=react&logoColor=white)
-![Java](https://img.shields.io/badge/Java-25-ED8B00?logo=openjdk&logoColor=white)
-![Spring Boot](https://img.shields.io/badge/Spring%20Boot-4.1.1-6DB33F?logo=springboot&logoColor=white)
-![Spring Security](https://img.shields.io/badge/Spring%20Security-7.1.0-6DB33F?logo=springsecurity&logoColor=white)
 ![Vite](https://img.shields.io/badge/Vite-8.0-646CFF?logo=vite&logoColor=white)
+![React Router](https://img.shields.io/badge/React%20Router-7.14-CA4245?logo=reactrouter&logoColor=white)
 ![Redux Toolkit](https://img.shields.io/badge/Redux%20Toolkit-2.12-764ABC?logo=redux&logoColor=white)
 ![Axios](https://img.shields.io/badge/Axios-1.15-5A29E4?logo=axios&logoColor=white)
 ![Stripe](https://img.shields.io/badge/Stripe-32.1-635BFF?logo=stripe&logoColor=white)
+![Java](https://img.shields.io/badge/Java-25-ED8B00?logo=openjdk&logoColor=white)
+![Spring Boot](https://img.shields.io/badge/Spring%20Boot-4.1.1-6DB33F?logo=springboot&logoColor=white)
+![Spring Security](https://img.shields.io/badge/Spring%20Security-7.1.0-6DB33F?logo=springsecurity&logoColor=white)
 
 
 > **React 19 × Spring Boot 4** 打造的完整電商解決方案 — 從前端互動體驗、Stripe 金流整合，到後端安全架構與多環境部署，每一層都按業界標準設計。
