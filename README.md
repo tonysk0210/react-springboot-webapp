@@ -426,7 +426,7 @@ private Product product;
 | `Customer.address` → `Address` | `@OneToOne(mappedBy = "customer", cascade = ALL)` | **EAGER** | 未指定 → `@OneToOne` 預設即 EAGER |
 | `Address.customer` | `@OneToOne(fetch = LAZY, optional = false)` + `@JoinColumn` | LAZY | 明示；owning side（FK 在 `ADDRESS`） |
 | `Order.customer` | `@ManyToOne(fetch = LAZY, optional = false)` | LAZY | 明示（覆寫掉 `@ManyToOne` 的 EAGER 預設） |
-| `Order.orderItems` → `OrderItem` | `@OneToMany(mappedBy = "order", ...)` | **LAZY** | 未指定 → `@OneToMany` 預設即 LAZY |
+| `Order.orderItems` → `OrderItem` | `@OneToMany(mappedBy = "order", ...)` | LAZY | 未指定 → `@OneToMany` 預設即 LAZY |
 | `OrderItem.order` / `.product` | `@ManyToOne(fetch = LAZY, optional = false)` ×2 | LAZY | 明示 |
 | `Role.customers` | `@ManyToMany(mappedBy = "roles")` | LAZY | 未指定 → `@ManyToMany` 預設即 LAZY |
 
@@ -448,7 +448,7 @@ private Product product;
 
 - **訂單看板**：列出所有 `status = CREATED` 的待處理訂單，一鍵確認或取消
 - **客服留言管理**：集中處理所有 `status = OPEN` 的留言，可標記為已關閉
-- **Swagger UI / OpenAPI**：SpringDoc 自動產生完整 API 規格，限 ADMIN 存取（實際取用方式見[此節](#h2-console-與-swagger-ui-的實際存取方式)）
+- **Swagger UI / OpenAPI**：SpringDoc 自動產生完整 API 規格，限 ADMIN 存取
 
 ### 平台安全
 
@@ -476,16 +476,6 @@ private Product product;
 
 **設計要點**：JWT 為無狀態（Stateless），後端不需維護 Session，適合水平擴展。Token payload 內嵌 roles，省去每次請求查詢資料庫的開銷。
 
-> **Token 不含 `customerId`** — 後端一律以 claims 中的 `email` 作為 principal 反查使用者。
->
-> **20 分鐘效期偏短**：閒置逾時後任何 API 都會回 401 並被前端導回登入頁。若要調整，改 `JwtUtil.generateJwtToken()` 內的 `1000L * 60 * 20`。
-
-#### 一個重要的副作用：formLogin / httpBasic 實際上不可用
-
-`MySecurityConfig` 同時啟用了 `formLogin()` 與 `httpBasic()`，但 `JWTTokenValidatorFilter` 被掛在 `BasicAuthenticationFilter` **之前**，且對任何非公開路徑在缺少 Bearer token 時就直接回 401。因此表單登入與 HTTP Basic 都不會生效 —— **存取受保護資源的唯一方式是帶上 Bearer JWT**。
-
-這也連帶影響瀏覽器直接開啟 `/h2-console` 與 `/swagger-ui/index.html`，詳見[快速開始](#h2-console-與-swagger-ui-的實際存取方式)一節。
-
 #### Cookie-based CSRF 雙重防護
 
 JWT 與 CSRF 對應不同攻擊面，兩者並存：
@@ -500,7 +490,9 @@ JWT 與 CSRF 對應不同攻擊面，兩者並存：
 - 後端設定 `CookieCsrfTokenRepository.withHttpOnlyFalse()`，在回應中附上 `XSRF-TOKEN` cookie（JavaScript 可讀）
 - 前端 Axios Request Interceptor 在 POST / PUT / PATCH / DELETE 自動從 cookie 讀取 token，加入 `X-XSRF-TOKEN` header
 - 若 cookie 不存在（初次載入），先呼叫 `GET /api/v1/csrf-token` 取得 token 後再送出原請求
-- 唯一例外：`/api/v1/contacts/**` 為公開聯絡表單，免除 CSRF 驗證
+- 兩組豁免（`ignoringRequestMatchers`）：
+  - `/api/v1/contacts`、`/api/v1/contacts/**` —— 公開聯絡表單，讓未持有 token 的訪客也能送出留言
+  - `PathRequest.toH2Console()` —— H2 Console 的登入表單（`login.do`）是一般 form POST，不會帶 `X-XSRF-TOKEN`
 
 #### 存取控制（RBAC）
 
@@ -544,7 +536,7 @@ JWT 與 CSRF 對應不同攻擊面，兩者並存：
 4. 付款成功 → POST /api/v1/orders → 建立訂單紀錄 → 跳轉 /order-success
 ```
 
-後端全程不接觸卡號，符合 PCI-DSS SAQ A 的整合模式。
+後端全程不接觸卡號，符合 **PCI-DSS**（Payment Card Industry Data Security Standard，支付卡產業資料安全標準）中 **SAQ A**（Self-Assessment Questionnaire A，最輕量的自評問卷等級，適用於卡號完全外包給第三方、自身伺服器從不接觸的商家）的整合模式。
 
 ### 性能設計
 
@@ -557,24 +549,13 @@ JWT 與 CSRF 對應不同攻擊面，兩者並存：
 
 商品資料為唯讀且更新頻率極低，快取可大幅減少 DB 查詢。角色資料幾乎不變，適合較長的 TTL。
 
-#### Vite 程式碼分割
-
-`vite.config.js` 透過 `manualChunks` 將第三方依賴拆為四個獨立 chunk，避免單一巨大 bundle，並讓瀏覽器快取更有效：
-
-| Chunk | 內容 |
-|-------|------|
-| `vendor` | react、react-dom |
-| `redux` | @reduxjs/toolkit、react-redux |
-| `router` | react-router-dom |
-| `ui` | @fortawesome 相關套件 |
-
-生產建構另關閉 sourcemap、改用 esbuild 壓縮。
-
 ### 工程設計亮點
 
 #### 狀態管理策略 — Redux 與 Context 的分工
 
-本專案刻意採用**兩種不同的狀態管理方案**，分別對應不同的使用情境：
+本專案同時使用 **Redux Toolkit 與 React Context 兩種狀態管理方案，主要目的是練習兩者的寫法與差異**。以實際需求而言，這個規模的應用用單一方案就足夠。
+
+不過兩者的分工仍有其合理性 —— 以下說明各自被放在什麼位置、以及為何適合：
 
 **Redux Toolkit — 購物車**
 
@@ -627,47 +608,6 @@ Response Interceptor
   ├── 2xx → 正常回傳資料
   └── 401 → 清除 localStorage token + user → 導向 /login
 ```
-
-#### Interface + Impl 分離
-
-Service 層一律定義介面，再由 `impl/` 提供實作，遵循依賴倒置原則（DIP）：
-
-```java
-// Service 介面（定義契約）
-public interface ProductService {
-    List<ProductDto> getAllProducts();
-}
-
-// 實作（可替換，不影響 Controller）
-@Service
-@RequiredArgsConstructor
-public class ProductServiceImpl implements ProductService {
-    private final ProductRepo productRepo;
-
-    @Cacheable("products")
-    @Override
-    public List<ProductDto> getAllProducts() { ... }
-}
-```
-
-#### Constructor Injection（建構子注入）
-
-所有 Bean 使用 `@RequiredArgsConstructor`（Lombok）產生建構子注入，而非 `@Autowired` 欄位注入：
-
-- 便於單元測試（可直接傳入 Mock 物件）
-- 依賴關係在物件建立時即確立，不可為 null
-- `final` 欄位確保不可變性
-
-#### Java Record 作為 DTO
-
-Response DTO 大量使用 Java Record，天生不可變、自帶 `equals` / `hashCode` / `toString`：
-
-```java
-public record LoginResponseDto(String jwtToken, UserDto user) {}
-public record PaymentResponseDto(String clientSecret) {}
-```
-
-Entity → DTO 轉換使用 `BeanUtils.copyProperties()`，對欄位名稱相同的屬性直接複製，省去手寫 setter 的樣板程式碼。
 
 #### 統一錯誤處理
 
