@@ -288,69 +288,98 @@ backend/src/main/resources/
     └── data.sql                     MERGE INTO 冪等種子資料
 ```
 
-### 資料庫設計
+### 資料模型
 
 ```mermaid
 erDiagram
-    CUSTOMERS ||--o{ CUSTOMER_ROLES : "擁有"
-    ROLES     ||--o{ CUSTOMER_ROLES : "被指派"
-    CUSTOMERS ||--o| ADDRESS        : "一對一（cascade delete）"
-    CUSTOMERS ||--o{ ORDERS         : "下訂"
-    ORDERS    ||--o{ ORDER_ITEMS    : "包含"
-    PRODUCTS  ||--o{ ORDER_ITEMS    : "被訂購"
-
-    CUSTOMERS {
-        bigint customer_id PK
-        varchar name
-        varchar email UK
-        varchar mobile_number UK
-        varchar password_hash "BCrypt"
-    }
-    ROLES {
-        bigint role_id PK
-        varchar name UK "ROLE_ADMIN / ROLE_USER / ROLE_OP"
-    }
-    CUSTOMER_ROLES {
-        bigint customer_id FK
-        bigint role_id FK
-    }
-    ADDRESS {
-        bigint address_id PK
-        bigint customer_id FK "UNIQUE"
-        varchar street
-        varchar city
-        varchar postal_code
-    }
-    PRODUCTS {
-        bigint product_id PK
-        varchar name
-        decimal price
-        int popularity
-        varchar image_url
-    }
-    ORDERS {
-        bigint order_id PK
-        bigint customer_id FK
-        decimal total_price
-        varchar payment_id "Stripe PaymentIntent ID"
-        varchar payment_status
-        varchar order_status "CREATED / CONFIRMED / CANCELLED"
-    }
-    ORDER_ITEMS {
-        bigint order_item_id PK
-        bigint order_id FK
-        bigint product_id FK
-        int quantity
-        decimal price "下單當下價格快照"
-    }
+    CUSTOMERS ||--o| ADDRESS     : "address.customer_id UNIQUE NOT NULL"
+    CUSTOMERS }o--o{ ROLES       : "customer_roles"
+    CUSTOMERS ||--o{ ORDERS      : "orders.customer_id NOT NULL"
+    ORDERS    ||--o{ ORDER_ITEMS : "order_items.order_id NOT NULL"
+    PRODUCTS  ||--o{ ORDER_ITEMS : "order_items.product_id NOT NULL"
     CONTACTS {
-        bigint contact_id PK
-        varchar name
-        varchar email
-        varchar message
-        varchar status "OPEN / CLOSED"
+        bigint contact_id
+        string status "OPEN / CLOSED"
     }
 ```
+
+| 符號 | 讀作 |
+|---|---|
+| `\|\|` | 剛好一筆（必填） |
+| `o\|` | 零或一筆（選填） |
+| `}o` / `o{` | 零到多筆 |
+
+逐條關聯：
+
+| 關聯 | 讀法 | 外鍵位置 |
+|---|---|---|
+| `CUSTOMERS \|\|--o\| ADDRESS` | 一位客戶最多一筆地址；**註冊時不填，之後在個人檔案補** | `address.customer_id` **NOT NULL + UNIQUE** |
+| `CUSTOMERS }o--o{ ROLES` | 一位客戶可有多個角色，一個角色可給多人 | 中介表 `customer_roles` |
+| `CUSTOMERS \|\|--o{ ORDERS` | 一位客戶可有多筆訂單；**每筆訂單一定屬於某位客戶** | `orders.customer_id` **NOT NULL** |
+| `ORDERS \|\|--o{ ORDER_ITEMS` | 一筆訂單含多個品項 | `order_items.order_id` **NOT NULL** |
+| `PRODUCTS \|\|--o{ ORDER_ITEMS` | 一個商品可出現在多筆訂單明細中 | `order_items.product_id` **NOT NULL** |
+| `CONTACTS` | 獨立資料表，沒有任何外鍵 | 無 |
+
+#### 這些關聯寫在哪
+
+與「外鍵全集中在單一資料表」的設計不同，**本專案的外鍵是分散的** —— 因此關聯宣告散落在四個 Entity 中，而非集中於 `Customer`。
+
+```java
+// Customer.java —— 只擁有 roles 這一個關聯
+@ManyToMany(fetch = FetchType.EAGER)                                  // 明示 EAGER
+@JoinTable(name = "customer_roles",                                   // 中介表
+        joinColumns = @JoinColumn(name = "customer_id"),              // 指回本類別 Customer
+        inverseJoinColumns = @JoinColumn(name = "role_id"))           // 指向集合元素 Role
+private Set<Role> roles = new LinkedHashSet<>();
+
+@OneToOne(mappedBy = "customer", cascade = CascadeType.ALL)           // mappedBy → inverse side
+private Address address;                                             // 外鍵不在 CUSTOMERS，而在 ADDRESS
+```
+
+```java
+// Address.java —— 持有 @JoinColumn，是 owning side
+@OneToOne(fetch = FetchType.LAZY, optional = false)
+@JoinColumn(name = "CUSTOMER_ID", nullable = false)                   // 存進 address.customer_id
+private Customer customer;
+```
+
+```java
+// Order.java
+@ManyToOne(fetch = FetchType.LAZY, optional = false)
+@OnDelete(action = OnDeleteAction.RESTRICT)                           // 有訂單的客戶不得刪除
+@JoinColumn(name = "CUSTOMER_ID", nullable = false)
+private Customer customer;
+
+@OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
+private List<OrderItem> orderItems = new ArrayList<>();               // inverse side，預設 LAZY
+```
+
+```java
+// OrderItem.java —— 兩個關聯都是 owning side
+@ManyToOne(fetch = FetchType.LAZY, optional = false)
+@OnDelete(action = OnDeleteAction.RESTRICT)                           // 保留歷史訂單，禁止刪除來源
+@JoinColumn(name = "ORDER_ID", nullable = false)
+private Order order;
+
+@ManyToOne(fetch = FetchType.LAZY, optional = false)
+@OnDelete(action = OnDeleteAction.RESTRICT)
+@JoinColumn(name = "PRODUCT_ID", nullable = false)
+private Product product;
+```
+
+三個補充重點：
+
+1. **沒有單一中心表** —— 外鍵分別落在 `ADDRESS`、`customer_roles`、`ORDERS`、`ORDER_ITEMS` 四處。整張圖實際上是兩個群組：以 `CUSTOMERS` 為核心的帳號群（地址、角色），以及 `ORDERS → ORDER_ITEMS → PRODUCTS` 的訂單鏈，兩者靠 `orders.customer_id` 相接。
+2. **`Customer.address` 是 inverse side** —— 判準是「誰身上有 `@JoinColumn`」，而 `@JoinColumn` 在 `Address` 上。所以 `Customer` 標的是 `mappedBy = "customer"`，僅為唯讀視角；真正寫入 `address.customer_id` 的是儲存 `Address` 的動作。`cascade = ALL` 讓儲存／刪除 `Customer` 時連帶處理其 `Address`。
+3. **三個 `@OnDelete(RESTRICT)` 是刻意的** —— 訂單與訂單明細指向的來源（客戶、訂單、商品）都禁止刪除，以免歷史訂單失去參照。這與 `schema.sql` 一致：`ADDRESS` 與 `CUSTOMER_ROLES` 有 `ON DELETE CASCADE`，但 `ORDERS` 沒有。
+
+| 類別 | 類型 | 注意事項 |
+|---|---|---|
+| `Customer` | JPA Entity | `roles` 為 **EAGER**；`address` 未指定 fetch，`@OneToOne` 預設也是 **EAGER** → 載入一次會連帶發出數筆 SQL |
+| `Order` | JPA Entity | `orderItems` 為 **LAZY**（`@OneToMany` 預設）—— 這是 OSIV 不能關閉的原因，詳見下方 |
+| `Address`、`OrderItem`、`Product`、`Contact` | JPA Entity | 關聯皆明示 `LAZY` |
+| `Role` | JPA Entity | ⚠️ 第 28–32 行保留**已註解**的 `@ManyToOne Customer`（舊的一對多設計）。`ROLES` 表並無 `customer_id` 欄位，**勿解除註解** |
+| `BaseEntity` | `@MappedSuperclass` | 稽核欄位 `createdAt` / `createdBy` / `updatedAt` / `updatedBy` |
 
 #### 資料層重點
 

@@ -4328,3 +4328,53 @@ Consider defining a bean of type 'org.springframework.security.authentication.pa
 2026-09-20T12:15:22.878+08:00  INFO 22856 --- [backend] [Thread-97] j.LocalContainerEntityManagerFactoryBean : Closing JPA EntityManagerFactory for persistence unit 'default'
 2026-09-20T12:15:22.880+08:00  INFO 22856 --- [backend] [Thread-97] com.zaxxer.hikari.HikariDataSource       : HikariPool-18 - Shutdown initiated...
 2026-09-20T12:15:23.117+08:00  INFO 22856 --- [backend] [Thread-97] com.zaxxer.hikari.HikariDataSource       : HikariPool-18 - Shutdown completed.
+2026-09-20T12:15:25.117+08:00  INFO 22856 --- [backend] [restartedMain] com.example.backend.BackendApplication   : Starting BackendApplication using Java 25.0.1 with PID 22856 (D:\Fork\github\react-springboot-webapp\backend\target\classes started by tony.shangkuan in D:\Fork\github\react-springboot-webapp\backend)
+2026-09-20T12:15:25.117+08:00  INFO 22856 --- [backend] [restartedMain] com.example.backend.BackendApplication   : The following 1 profile is active: "default"
+2026-09-20T12:15:25.800+08:00  INFO 22856 --- [backend] [restartedMain] .s.d.r.c.RepositoryConfigurationDelegate : Bootstrapping Spring Data JPA repositories in DEFAULT mode.
+2026-09-20T12:15:25.953+08:00  INFO 22856 --- [backend] [restartedMain] .s.d.r.c.RepositoryConfigurationDelegate : Finished Spring Data repository scanning in 150 ms. Found 5 JPA repository interfaces.
+2026-09-20T12:15:26.292+08:00  INFO 22856 --- [backend] [restartedMain] o.s.boot.tomcat.TomcatWebServer          : Tomcat initialized with port 8080 (http)
+2026-09-20T12:15:26.293+08:00  INFO 22856 --- [backend] [restartedMain] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
+2026-09-20T12:15:26.293+08:00  INFO 22856 --- [backend] [restartedMain] o.apache.catalina.core.StandardEngine    : Starting Servlet engine: [Apache Tomcat/11.0.24]
+2026-09-20T12:15:26.336+08:00  INFO 22856 --- [backend] [restartedMain] b.w.c.s.WebApplicationContextInitializer : Root WebApplicationContext: initialization completed in 1216 ms
+2026-09-20T12:15:26.474+08:00  INFO 22856 --- [backend] [restartedMain] com.zaxxer.hikari.HikariDataSource       : HikariPool-19 - Starting...
+2026-09-20T12:15:26.527+08:00  INFO 22856 --- [backend] [restartedMain] com.zaxxer.hikari.pool.HikariPool        : HikariPool-19 - Added connection conn200: url=jdbc:h2:file:./h2db/myDb user=SA
+2026-09-20T12:15:26.527+08:00  INFO 22856 --- [backend] [restartedMain] com.zaxxer.hikari.HikariDataSource       : HikariPool-19 - Start completed.
+2026-09-20T12:15:26.562+08:00  INFO 22856 --- [backend] [restartedMain] org.hibernate.orm.jpa                    : HHH008540: Processing PersistenceUnitInfo [name: default]
+2026-09-20T12:15:26.618+08:00  INFO 22856 --- [backend] [restartedMain] o.s.o.j.p.SpringPersistenceUnitInfo      : No LoadTimeWeaver setup: ignoring JPA class transformer
+2026-09-20T12:15:26.619+08:00  INFO 22856 --- [backend] [restartedMain] org.hibernate.orm.connections.pooling    : HHH10001005: Database info:
+	Database JDBC URL [jdbc:h2:file:./h2db/myDb]
+	Database driver: H2 JDBC Driver
+	Database dialect: H2Dialect
+	Database version: 2.4.240
+	Default catalog/schema: MYDB/PUBLIC
+	Autocommit mode: undefined/unknown
+	Isolation level: READ_COMMITTED [default READ_COMMITTED]
+	JDBC fetch size: 100
+	Pool: DataSourceConnectionProvider
+	Minimum pool size: undefined/unknown
+	Maximum pool size: undefined/unknown
+2026-09-20T12:15:26.908+08:00  INFO 22856 --- [backend] [restartedMain] org.hibernate.orm.core                   : HHH000489: No JTA platform available (set 'hibernate.transaction.jta.platform' to enable JTA platform integration)
+2026-09-20T12:15:26.911+08:00  INFO 22856 --- [backend] [restartedMain] j.LocalContainerEntityManagerFactoryBean : Initialized JPA EntityManagerFactory for persistence unit 'default'
+2026-09-20T12:15:27.230+08:00  WARN 22856 --- [backend] [restartedMain] ConfigServletWebServerApplicationContext : Exception encountered during context initialization - cancelling refresh attempt: org.springframework.beans.factory.UnsatisfiedDependencyException: Error creating bean with name 'authController' defined in file [D:\Fork\github\react-springboot-webapp\backend\target\classes\com\example\backend\controller\AuthController.class]: Unsatisfied dependency expressed through constructor parameter 0: No qualifying bean of type 'org.springframework.security.authentication.password.CompromisedPasswordChecker' available: expected at least 1 bean which qualifies as autowire candidate. Dependency annotations: {}
+2026-09-20T12:15:27.231+08:00  INFO 22856 --- [backend] [restartedMain] j.LocalContainerEntityManagerFactoryBean : Closing JPA EntityManagerFactory for persistence unit 'default'
+2026-09-20T12:15:27.231+08:00  INFO 22856 --- [backend] [restartedMain] com.zaxxer.hikari.HikariDataSource       : HikariPool-19 - Shutdown initiated...
+2026-09-20T12:15:27.392+08:00  INFO 22856 --- [backend] [restartedMain] com.zaxxer.hikari.HikariDataSource       : HikariPool-19 - Shutdown completed.
+2026-09-20T12:15:27.393+08:00  INFO 22856 --- [backend] [restartedMain] o.apache.catalina.core.StandardService   : Stopping service [Tomcat]
+2026-09-20T12:15:27.401+08:00  INFO 22856 --- [backend] [restartedMain] .s.b.a.l.ConditionEvaluationReportLogger : 
+
+Error starting ApplicationContext. To display the condition evaluation report re-run your application with 'debug' enabled.
+2026-09-20T12:15:27.407+08:00 ERROR 22856 --- [backend] [restartedMain] o.s.b.d.LoggingFailureAnalysisReporter   : 
+
+***************************
+APPLICATION FAILED TO START
+***************************
+
+Description:
+
+Parameter 0 of constructor in com.example.backend.controller.AuthController required a bean of type 'org.springframework.security.authentication.password.CompromisedPasswordChecker' that could not be found.
+
+
+Action:
+
+Consider defining a bean of type 'org.springframework.security.authentication.password.CompromisedPasswordChecker' in your configuration.
+
