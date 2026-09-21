@@ -693,7 +693,7 @@ JWT 與 CSRF 對應不同攻擊面，兩者並存：
 - **元件寫入**：`dispatch(addToCart({ product, quantity }))`，經 action creator 轉成 action 物件
 - **更新邏輯**：`createSlice` 的三個 reducer（`addToCart` / `removeFromCart` / `clearCart`），搭配 Immer 可直接改寫 state
 - **衍生資料**：三個 selector，其中 `selectTotalQuantity`、`selectTotalPrice` 由購物車內容即時算出
-- **持久化**：`store.subscribe()` 訂閱整個 store，任何變更後把 `state.cart` 寫入 localStorage 的 `cart`
+- **持久化**：`store.subscribe()` 訂閱整個 store —— **每次 dispatch 後都會觸發**（不比對狀態是否真的改變），callback 內無條件把 `state.cart` 寫入 localStorage 的 `cart`
 - **初始值**：`initialState` 在建立 slice 時從 localStorage 還原
 
 `cart-slice.js` 的 `addToCart` —— state 本身就是商品陣列，payload 為 `{ product, quantity }`：
@@ -733,7 +733,7 @@ function cartReducer(currentState, action) {
 
 - **狀態存放**：`AuthProvider` 內的 `useReducer(authReducer, initialAuthState)`，無獨立 store
 - **元件讀取**：`useAuth()` —— 對 `useContext(AuthContext)` 的薄包裝
-- **元件寫入**：直接呼叫 Provider 提供的 `loginSuccess(jwtToken, user)` 與 `logout()`，不需 dispatch
+- **元件寫入**：呼叫 Provider 提供的 `loginSuccess(jwtToken, user)` 與 `logout()`；兩者內部仍呼叫 `dispatch({ type: LOGIN_SUCCESS / LOGOUT, ... })`，只是 dispatch 被封裝在 Provider 內，元件不直接接觸
 - **更新邏輯**：`authReducer` 以 `switch` 處理 `LOGIN_SUCCESS` / `LOGOUT` 兩個 case
 - **衍生資料**：無，元件直接取用 `authState` 的欄位
 - **持久化**：`useEffect` 監聽 `authState`，變動時寫入 localStorage 的 `jwtToken` 與 `user`
@@ -746,9 +746,33 @@ function cartReducer(currentState, action) {
 | 模式 | 說明 | 優點 |
 |------|------|------|
 | `loader` | 路由匹配時即執行資料獲取 | 元件掛載時資料已就位，無 Loading 狀態閃爍 |
-| `action` | 表單提交時執行副作用（POST / PUT） | 提交邏輯與元件渲染解耦，複用性高 |
+| `action` | `<Form method="post">` 送出時自動呼叫，元件不需寫 onSubmit | 函式收到 `request`，用 `request.formData()` 取值後打 API；回傳值由元件的 `useActionData()` 取得 |
 | `shouldRevalidate` | 控制 loader 是否重新執行 | 精細控制重新取資料的時機，避免不必要的 API 呼叫 |
 | `throw new Response()` | 在 loader/action 中丟出錯誤 | 由 `ErrorPage.jsx` 統一捕捉，不需每個元件個別處理錯誤 |
+
+以登入為例，`action` 的三個環節分別落在不同檔案，元件裡不需要任何 `onSubmit` 或 `fetch`：
+
+```jsx
+// ① main.jsx —— 把 action 掛在路由上
+<Route path="/login" element={<Login />} action={loginAction} />
+
+// ② Login.jsx —— 表單只要用 <Form>，送出時 React Router 自動呼叫 loginAction
+<Form method="post">   {/* 不必寫 onSubmit */}
+
+// ③ Login.jsx —— action 本體：從 request 取表單值、打 API、回傳結果
+export async function loginAction({ request }) {
+  const data = await request.formData();
+  const loginPayload = { userName: data.get("username"), password: data.get("password") };
+  const response = await apiClient.post("/auth/login", loginPayload);
+  const { message, user, jwtToken } = response.data;
+  return { success: true, message, user, jwtToken };   // ← 成為 actionData
+}
+
+// ④ Login.jsx 元件內 —— 取回 action 的回傳值
+const actionData = useActionData();
+```
+
+專案中共有四個 action：`loginAction`、`registerAction`、`contactAction`、`profileAction`，四者都是這個模式。
 
 #### Axios 攔截器設計
 
