@@ -183,6 +183,104 @@ flowchart TD
     Root --> EP["ErrorPage<br/>errorElement"]
 ```
 
+### 路由與元件全貌
+
+上圖聚焦在路由的存取層級；下圖則把 Provider 巢狀、路由定義、元件組成與 API 呼叫串在一起，可看出每個頁面實際由哪些元件構成、以及哪些頁面會打後端。
+
+```mermaid
+flowchart TD
+    Root["React Root<br/>#root"]
+
+    Strict["StrictMode"]
+    Elements["Elements<br/>Stripe Provider"]
+    Auth["AuthProvider<br/>AuthContext + useReducer"]
+    Redux["Redux Provider<br/>cart store"]
+    Router["RouterProvider<br/>appRouter"]
+
+    Root --> Strict --> Elements
+    Elements --> Auth
+    Auth --> Redux
+    Redux --> Router
+    Elements --> Toast["ToastContainer"]
+
+    Router --> AppRoute
+
+    subgraph ROUTER["routeDefinitions"]
+        AppRoute["Root Route: /<br/>element: App<br/>errorElement: ErrorPage"]
+
+        AppRoute --> App["App Layout"]
+        App --> Header["Header"]
+        App --> AppOutlet["App Outlet"]
+        App --> Footer["Footer"]
+
+        AppRoute -.錯誤時.-> ErrorPage["ErrorPage"]
+
+        subgraph PUBLIC["公開路由"]
+            AppOutlet --> HomeIndex["/ index<br/>Home<br/>loader: productsLoader"]
+            AppOutlet --> Home["/home<br/>Home<br/>loader: productsLoader"]
+            AppOutlet --> About["/about<br/>About"]
+            AppOutlet --> Contact["/contact<br/>Contact<br/>loader: contactLoader<br/>action: contactAction"]
+            AppOutlet --> Login["/login<br/>Login<br/>action: loginAction"]
+            AppOutlet --> Cart["/cart<br/>Cart"]
+            AppOutlet --> Product["/products/:productId<br/>ProductDetail"]
+            AppOutlet --> Register["/register<br/>Register<br/>action: registerAction"]
+        end
+
+        subgraph PROTECTED["需要登入的路由"]
+            AppOutlet --> Guard["ProtectedRoute<br/>登入檢查"]
+            Guard --> GuardOutlet["ProtectedRoute Outlet"]
+
+            GuardOutlet --> Checkout["/checkout<br/>CheckoutForm<br/>Stripe Elements"]
+            GuardOutlet --> Success["/order-success<br/>OrderSuccess"]
+            GuardOutlet --> Orders["/orders<br/>Orders<br/>loader: ordersLoader"]
+            GuardOutlet --> Profile["/profile<br/>Profile<br/>loader: profileLoader<br/>action: profileAction"]
+            GuardOutlet --> OrderManage["/admin/orderManage<br/>OrderManage<br/>loader: orderManageLoader"]
+            GuardOutlet --> Messages["/admin/messages<br/>Message<br/>loader: messagesLoader"]
+        end
+    end
+
+    subgraph COMPONENTS["主要 Component 內部關係"]
+        Home --> Listing["ProductListing"]
+        Listing --> Card["ProductCard"]
+        Listing --> Search["SearchBox"]
+        Listing --> Sort["DropDown"]
+        Card --> Price["Price"]
+
+        Cart --> CartTable["CartTable"]
+
+        Checkout --> StripeCard["CardNumberElement"]
+        Checkout --> StripeExpiry["CardExpiryElement"]
+        Checkout --> StripeCvc["CardCvcElement"]
+
+        Login --> LoginForm["React Router Form"]
+        Register --> RegisterForm["React Router Form"]
+        Profile --> ProfileForm["Profile Form"]
+        Contact --> ContactForm["Contact Form"]
+    end
+
+    subgraph SUPPORT["共用狀態與 API"]
+        API["apiClient.js<br/>Axios + JWT + CSRF + 401"]
+        AuthContext["auth-context.jsx<br/>登入狀態"]
+        CartStore["cart-slice.js / store.js<br/>購物車狀態"]
+        Guards["authRouteGuards.js<br/>requireAuth"]
+    end
+
+    Login --> API
+    Register --> API
+    Contact --> API
+    Profile --> API
+    Orders --> API
+    Checkout --> API
+    OrderManage --> API
+    Messages --> API
+
+    Auth --> AuthContext
+    Redux --> CartStore
+    Guard --> Guards
+
+    API --> Backend["Spring Boot REST API"]
+```
+
 ---
 
 ## 2. 系統架構與專案結構
