@@ -141,13 +141,17 @@ sequenceDiagram
         A-->>F: 200 LoginResponseDto<br/>{ message, user: UserDto, jwtToken }
         F->>F: 寫入 localStorage<br/>jwtToken 存字串、user 存 JSON.stringify(UserDto)
     else 密碼錯誤 / 查無使用者
-        P-->>M: BadCredentialsException<br/>UsernameNotFoundException
+        P-->>M: BadCredentialsException（"密碼錯誤"）<br/>UsernameNotFoundException（"無法找到該使用者: {email}"）
         M-->>A: AuthenticationException
-        A-->>F: 401 { message, null, null }
+        A-->>F: 401 LoginResponseDto<br/>{ message: 上述例外訊息, user: null, jwtToken: null }
     end
 
     Note over F,A: 後續請求皆帶 Authorization 標頭（Bearer token）<br/>由 JWTTokenValidatorFilter 驗證
 ```
+
+失敗時的 `message` 直接取自例外訊息 —— `MyAuthenticationProvider` 丟出 `BadCredentialsException("密碼錯誤")` 或 `UsernameNotFoundException("無法找到該使用者: " + email)`，`AuthController.buildErrorResponse()` 再把它放進 `LoginResponseDto` 的 `message` 欄位（`user` 與 `jwtToken` 皆為 `null`）。
+
+前端 `Login.jsx` 以 `error.response?.data?.message || "輸入的帳號或密碼錯誤"` 取值，因此**後端訊息優先**；只有在連線失敗等拿不到回應主體的情況下，才會顯示那句預設文字。最終由 `toast.error()` 呈現。
 
 ### 頁面地圖
 
