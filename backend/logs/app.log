@@ -1,1 +1,121 @@
 2026-09-22T05:49:11.729+08:00  WARN 28524 --- [backend] [HikariPool-7:housekeeper] com.zaxxer.hikari.pool.HikariPool        : HikariPool-7 - Thread starvation or clock leap detected (housekeeper delta=5h15m41s221ms504µs).
+2026-09-22T06:45:09.752+08:00  INFO 28524 --- [backend] [File Watcher] rtingClassPathChangeChangedEventListener : Restarting due to 77 class path changes (0 additions, 70 deletions, 7 modifications)
+2026-09-22T06:45:09.815+08:00  INFO 28524 --- [backend] [Thread-121] o.s.boot.tomcat.GracefulShutdown         : Commencing graceful shutdown. Waiting for active requests to complete
+2026-09-22T06:45:09.838+08:00  INFO 28524 --- [backend] [tomcat-shutdown] o.s.boot.tomcat.GracefulShutdown         : Graceful shutdown complete
+2026-09-22T06:45:09.867+08:00  INFO 28524 --- [backend] [Thread-121] j.LocalContainerEntityManagerFactoryBean : Closing JPA EntityManagerFactory for persistence unit 'default'
+2026-09-22T06:45:09.880+08:00  INFO 28524 --- [backend] [Thread-121] com.zaxxer.hikari.HikariDataSource       : HikariPool-7 - Shutdown initiated...
+2026-09-22T06:45:10.146+08:00  INFO 28524 --- [backend] [Thread-121] com.zaxxer.hikari.HikariDataSource       : HikariPool-7 - Shutdown completed.
+2026-09-22T06:45:13.716+08:00  INFO 28524 --- [backend] [restartedMain] com.example.backend.BackendApplication   : Starting BackendApplication using Java 25.0.1 with PID 28524 (D:\Fork\github\react-springboot-webapp\backend\target\classes started by tony.shangkuan in D:\Fork\github\react-springboot-webapp\backend)
+2026-09-22T06:45:13.718+08:00  INFO 28524 --- [backend] [restartedMain] com.example.backend.BackendApplication   : The following 1 profile is active: "default"
+2026-09-22T06:45:13.724+08:00  WARN 28524 --- [backend] [restartedMain] o.s.core.annotation.MergedAnnotation     : Failed to introspect meta-annotation @EnableConfigurationProperties on class com.example.backend.BackendApplication: java.lang.TypeNotPresentException: Type com.example.backend.dto.ContactInfoDto not present
+2026-09-22T06:45:13.784+08:00  WARN 28524 --- [backend] [restartedMain] ConfigServletWebServerApplicationContext : Exception encountered during context initialization - cancelling refresh attempt: org.springframework.beans.factory.BeanDefinitionStoreException: I/O failure while processing configuration class [null]
+2026-09-22T06:45:13.809+08:00 ERROR 28524 --- [backend] [restartedMain] o.s.boot.SpringApplication               : Application run failed
+
+org.springframework.beans.factory.BeanDefinitionStoreException: I/O failure while processing configuration class [null]
+	at org.springframework.context.annotation.ConfigurationClassParser.processConfigurationClass(ConfigurationClassParser.java:290) ~[spring-context-7.0.9.jar:7.0.9]
+	at org.springframework.context.annotation.ConfigurationClassParser.parse(ConfigurationClassParser.java:206) ~[spring-context-7.0.9.jar:7.0.9]
+	at org.springframework.context.annotation.ConfigurationClassParser.parse(ConfigurationClassParser.java:174) ~[spring-context-7.0.9.jar:7.0.9]
+	at org.springframework.context.annotation.ConfigurationClassPostProcessor.processConfigBeanDefinitions(ConfigurationClassPostProcessor.java:452) ~[spring-context-7.0.9.jar:7.0.9]
+	at org.springframework.context.annotation.ConfigurationClassPostProcessor.postProcessBeanDefinitionRegistry(ConfigurationClassPostProcessor.java:316) ~[spring-context-7.0.9.jar:7.0.9]
+	at org.springframework.context.support.PostProcessorRegistrationDelegate.invokeBeanDefinitionRegistryPostProcessors(PostProcessorRegistrationDelegate.java:349) ~[spring-context-7.0.9.jar:7.0.9]
+	at org.springframework.context.support.PostProcessorRegistrationDelegate.invokeBeanFactoryPostProcessors(PostProcessorRegistrationDelegate.java:118) ~[spring-context-7.0.9.jar:7.0.9]
+	at org.springframework.context.support.AbstractApplicationContext.invokeBeanFactoryPostProcessors(AbstractApplicationContext.java:795) ~[spring-context-7.0.9.jar:7.0.9]
+	at org.springframework.context.support.AbstractApplicationContext.refresh(AbstractApplicationContext.java:603) ~[spring-context-7.0.9.jar:7.0.9]
+	at org.springframework.boot.web.server.servlet.context.ServletWebServerApplicationContext.refresh(ServletWebServerApplicationContext.java:143) ~[spring-boot-web-server-4.1.1.jar:4.1.1]
+	at org.springframework.boot.SpringApplication.refresh(SpringApplication.java:756) ~[spring-boot-4.1.1.jar:4.1.1]
+	at org.springframework.boot.SpringApplication.refreshContext(SpringApplication.java:445) ~[spring-boot-4.1.1.jar:4.1.1]
+	at org.springframework.boot.SpringApplication.run(SpringApplication.java:321) ~[spring-boot-4.1.1.jar:4.1.1]
+	at org.springframework.boot.SpringApplication.run(SpringApplication.java:1365) ~[spring-boot-4.1.1.jar:4.1.1]
+	at org.springframework.boot.SpringApplication.run(SpringApplication.java:1354) ~[spring-boot-4.1.1.jar:4.1.1]
+	at com.example.backend.BackendApplication.main(BackendApplication.java:23) ~[classes/:na]
+	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:104) ~[na:na]
+	at java.base/java.lang.reflect.Method.invoke(Method.java:565) ~[na:na]
+	at org.springframework.boot.devtools.restart.RestartLauncher.run(RestartLauncher.java:52) ~[spring-boot-devtools-4.1.1.jar:4.1.1]
+Caused by: java.io.FileNotFoundException: class path resource [com/example/backend/BackendApplication.class] cannot be opened because it does not exist
+	at org.springframework.core.io.ClassPathResource.getInputStream(ClassPathResource.java:212) ~[spring-core-7.0.9.jar:7.0.9]
+	at org.springframework.core.type.classreading.ClassFileMetadataReader.parseClassModel(ClassFileMetadataReader.java:49) ~[spring-core-7.0.9.jar:7.0.9]
+	at org.springframework.core.type.classreading.ClassFileMetadataReader.<init>(ClassFileMetadataReader.java:45) ~[spring-core-7.0.9.jar:7.0.9]
+	at org.springframework.core.type.classreading.ClassFileMetadataReaderFactory.getMetadataReader(ClassFileMetadataReaderFactory.java:62) ~[spring-core-7.0.9.jar:7.0.9]
+	at org.springframework.core.type.classreading.CachingMetadataReaderFactory.getMetadataReader(CachingMetadataReaderFactory.java:127) ~[spring-core-7.0.9.jar:7.0.9]
+	at org.springframework.core.type.classreading.AbstractMetadataReaderFactory.getMetadataReader(AbstractMetadataReaderFactory.java:62) ~[spring-core-7.0.9.jar:7.0.9]
+	at org.springframework.core.type.classreading.CachingMetadataReaderFactory.getMetadataReader(CachingMetadataReaderFactory.java:40) ~[spring-core-7.0.9.jar:7.0.9]
+	at org.springframework.context.annotation.ConfigurationClassParser.asSourceClass(ConfigurationClassParser.java:730) ~[spring-context-7.0.9.jar:7.0.9]
+	at org.springframework.context.annotation.ConfigurationClassParser.asSourceClass(ConfigurationClassParser.java:696) ~[spring-context-7.0.9.jar:7.0.9]
+	at org.springframework.context.annotation.ConfigurationClassParser.asSourceClass(ConfigurationClassParser.java:674) ~[spring-context-7.0.9.jar:7.0.9]
+	at org.springframework.context.annotation.ConfigurationClassParser.processConfigurationClass(ConfigurationClassParser.java:283) ~[spring-context-7.0.9.jar:7.0.9]
+	... 18 common frames omitted
+
+2026-09-22T06:45:26.333+08:00  INFO 28524 --- [backend] [restartedMain] com.example.backend.BackendApplication   : Starting BackendApplication using Java 25.0.1 with PID 28524 (D:\Fork\github\react-springboot-webapp\backend\target\classes started by tony.shangkuan in D:\Fork\github\react-springboot-webapp\backend)
+2026-09-22T06:45:26.334+08:00  INFO 28524 --- [backend] [restartedMain] com.example.backend.BackendApplication   : The following 1 profile is active: "default"
+2026-09-22T06:45:28.696+08:00  INFO 28524 --- [backend] [restartedMain] .s.d.r.c.RepositoryConfigurationDelegate : Bootstrapping Spring Data JPA repositories in DEFAULT mode.
+2026-09-22T06:45:34.601+08:00  INFO 28524 --- [backend] [restartedMain] .s.d.r.c.RepositoryConfigurationDelegate : Finished Spring Data repository scanning in 5853 ms. Found 5 JPA repository interfaces.
+2026-09-22T06:45:36.263+08:00  INFO 28524 --- [backend] [restartedMain] o.s.boot.tomcat.TomcatWebServer          : Tomcat initialized with port 8080 (http)
+2026-09-22T06:45:36.268+08:00  INFO 28524 --- [backend] [restartedMain] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
+2026-09-22T06:45:36.268+08:00  INFO 28524 --- [backend] [restartedMain] o.apache.catalina.core.StandardEngine    : Starting Servlet engine: [Apache Tomcat/11.0.24]
+2026-09-22T06:45:36.418+08:00  INFO 28524 --- [backend] [restartedMain] b.w.c.s.WebApplicationContextInitializer : Root WebApplicationContext: initialization completed in 10061 ms
+2026-09-22T06:45:37.673+08:00  INFO 28524 --- [backend] [restartedMain] com.zaxxer.hikari.HikariDataSource       : HikariPool-8 - Starting...
+2026-09-22T06:45:37.942+08:00  INFO 28524 --- [backend] [restartedMain] com.zaxxer.hikari.pool.HikariPool        : HikariPool-8 - Added connection conn392: url=jdbc:h2:file:./h2db/myDb user=SA
+2026-09-22T06:45:37.944+08:00  INFO 28524 --- [backend] [restartedMain] com.zaxxer.hikari.HikariDataSource       : HikariPool-8 - Start completed.
+2026-09-22T06:45:38.205+08:00  INFO 28524 --- [backend] [restartedMain] org.hibernate.orm.jpa                    : HHH008540: Processing PersistenceUnitInfo [name: default]
+2026-09-22T06:45:38.869+08:00  INFO 16236 --- [backend] [main] com.example.backend.BackendApplication   : Starting BackendApplication v0.0.1-SNAPSHOT using Java 25.0.1 with PID 16236 (D:\Fork\github\react-springboot-webapp\backend\target\backend-0.0.1-SNAPSHOT.jar started by tony.shangkuan in D:\Fork\github\react-springboot-webapp\backend)
+2026-09-22T06:45:38.878+08:00  INFO 16236 --- [backend] [main] com.example.backend.BackendApplication   : The following 1 profile is active: "default"
+2026-09-22T06:45:38.893+08:00  INFO 28524 --- [backend] [restartedMain] o.s.o.j.p.SpringPersistenceUnitInfo      : No LoadTimeWeaver setup: ignoring JPA class transformer
+2026-09-22T06:45:38.898+08:00  INFO 28524 --- [backend] [restartedMain] org.hibernate.orm.connections.pooling    : HHH10001005: Database info:
+	Database JDBC URL [jdbc:h2:file:./h2db/myDb]
+	Database driver: H2 JDBC Driver
+	Database dialect: H2Dialect
+	Database version: 2.4.240
+	Default catalog/schema: MYDB/PUBLIC
+	Autocommit mode: undefined/unknown
+	Isolation level: READ_COMMITTED [default READ_COMMITTED]
+	JDBC fetch size: 100
+	Pool: DataSourceConnectionProvider
+	Minimum pool size: undefined/unknown
+	Maximum pool size: undefined/unknown
+2026-09-22T06:45:40.918+08:00  INFO 28524 --- [backend] [restartedMain] org.hibernate.orm.core                   : HHH000489: No JTA platform available (set 'hibernate.transaction.jta.platform' to enable JTA platform integration)
+2026-09-22T06:45:40.940+08:00  INFO 28524 --- [backend] [restartedMain] j.LocalContainerEntityManagerFactoryBean : Initialized JPA EntityManagerFactory for persistence unit 'default'
+2026-09-22T06:45:42.415+08:00  INFO 28524 --- [backend] [restartedMain] eAuthenticationProviderManagerConfigurer : Global AuthenticationManager configured with AuthenticationProvider bean with name myAuthenticationProvider
+2026-09-22T06:45:42.602+08:00  INFO 16236 --- [backend] [main] .s.d.r.c.RepositoryConfigurationDelegate : Bootstrapping Spring Data JPA repositories in DEFAULT mode.
+2026-09-22T06:45:42.757+08:00  INFO 16236 --- [backend] [main] .s.d.r.c.RepositoryConfigurationDelegate : Finished Spring Data repository scanning in 124 ms. Found 5 JPA repository interfaces.
+2026-09-22T06:45:44.306+08:00  INFO 28524 --- [backend] [restartedMain] o.s.b.h.a.H2ConsoleAutoConfiguration     : H2 console available at '/h2-console'. Database available at 'jdbc:h2:file:./h2db/myDb'
+2026-09-22T06:45:44.402+08:00  INFO 28524 --- [backend] [restartedMain] o.s.b.a.e.web.EndpointLinksResolver      : Exposing 14 endpoints beneath base path '/actuator'
+2026-09-22T06:45:44.601+08:00  INFO 28524 --- [backend] [restartedMain] o.s.boot.tomcat.TomcatWebServer          : Tomcat started on port 8080 (http) with context path '/'
+2026-09-22T06:45:45.904+08:00  INFO 16236 --- [backend] [main] o.s.boot.tomcat.TomcatWebServer          : Tomcat initialized with port 8098 (http)
+2026-09-22T06:45:46.008+08:00  INFO 16236 --- [backend] [main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
+2026-09-22T06:45:46.008+08:00  INFO 16236 --- [backend] [main] o.apache.catalina.core.StandardEngine    : Starting Servlet engine: [Apache Tomcat/11.0.24]
+2026-09-22T06:45:46.230+08:00  INFO 16236 --- [backend] [main] b.w.c.s.WebApplicationContextInitializer : Root WebApplicationContext: initialization completed in 7089 ms
+2026-09-22T06:45:47.987+08:00  INFO 16236 --- [backend] [main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Starting...
+2026-09-22T06:45:48.831+08:00  INFO 16236 --- [backend] [main] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Added connection conn0: url=jdbc:h2:file:./h2db/myDb user=SA
+2026-09-22T06:45:48.835+08:00  INFO 16236 --- [backend] [main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Start completed.
+2026-09-22T06:45:49.391+08:00  INFO 16236 --- [backend] [main] org.hibernate.orm.jpa                    : HHH008540: Processing PersistenceUnitInfo [name: default]
+2026-09-22T06:45:49.695+08:00  INFO 16236 --- [backend] [main] org.hibernate.orm.core                   : HHH000001: Hibernate ORM core version 7.4.5.Final
+2026-09-22T06:45:50.018+08:00  INFO 28524 --- [backend] [restartedMain] com.example.backend.BackendApplication   : Started BackendApplication in 27.263 seconds (process running for 146297.509)
+2026-09-22T06:45:50.025+08:00  WARN 28524 --- [backend] [restartedMain] o.s.core.events.SpringDocAppInitializer  : SpringDoc /v3/api-docs endpoint is enabled by default. To disable it in production, set the property 'springdoc.api-docs.enabled=false'
+2026-09-22T06:45:50.026+08:00  WARN 28524 --- [backend] [restartedMain] o.s.core.events.SpringDocAppInitializer  : SpringDoc /swagger-ui.html endpoint is enabled by default. To disable it in production, set the property 'springdoc.swagger-ui.enabled=false'
+2026-09-22T06:45:50.028+08:00  INFO 28524 --- [backend] [restartedMain] .ConditionEvaluationDeltaLoggingListener : Condition evaluation unchanged
+2026-09-22T06:45:51.730+08:00  INFO 16236 --- [backend] [main] o.s.o.j.p.SpringPersistenceUnitInfo      : No LoadTimeWeaver setup: ignoring JPA class transformer
+2026-09-22T06:45:51.981+08:00  INFO 16236 --- [backend] [main] org.hibernate.orm.connections.pooling    : HHH10001005: Database info:
+	Database JDBC URL [jdbc:h2:file:./h2db/myDb]
+	Database driver: H2 JDBC Driver
+	Database dialect: H2Dialect
+	Database version: 2.4.240
+	Default catalog/schema: MYDB/PUBLIC
+	Autocommit mode: undefined/unknown
+	Isolation level: READ_COMMITTED [default READ_COMMITTED]
+	JDBC fetch size: 100
+	Pool: DataSourceConnectionProvider
+	Minimum pool size: undefined/unknown
+	Maximum pool size: undefined/unknown
+2026-09-22T06:45:55.017+08:00  INFO 16236 --- [backend] [main] org.hibernate.orm.core                   : HHH000489: No JTA platform available (set 'hibernate.transaction.jta.platform' to enable JTA platform integration)
+2026-09-22T06:45:55.832+08:00  INFO 16236 --- [backend] [main] j.LocalContainerEntityManagerFactoryBean : Initialized JPA EntityManagerFactory for persistence unit 'default'
+2026-09-22T06:45:56.024+08:00  INFO 16236 --- [backend] [main] o.s.d.j.r.query.QueryEnhancerFactories   : Hibernate is in classpath; If applicable, HQL parser will be used.
+2026-09-22T06:45:58.807+08:00  INFO 16236 --- [backend] [main] eAuthenticationProviderManagerConfigurer : Global AuthenticationManager configured with AuthenticationProvider bean with name myAuthenticationProvider
+2026-09-22T06:46:01.354+08:00  INFO 16236 --- [backend] [main] o.s.b.h.a.H2ConsoleAutoConfiguration     : H2 console available at '/h2-console'. Database available at 'jdbc:h2:file:./h2db/myDb'
+2026-09-22T06:46:01.557+08:00  INFO 16236 --- [backend] [main] o.s.b.a.e.web.EndpointLinksResolver      : Exposing 14 endpoints beneath base path '/actuator'
+2026-09-22T06:46:01.730+08:00  INFO 16236 --- [backend] [main] o.s.boot.tomcat.TomcatWebServer          : Tomcat started on port 8098 (http) with context path '/'
+2026-09-22T06:46:01.758+08:00  INFO 16236 --- [backend] [main] com.example.backend.BackendApplication   : Started BackendApplication in 25.415 seconds (process running for 27.332)
+2026-09-22T06:46:01.934+08:00  WARN 16236 --- [backend] [main] o.s.core.events.SpringDocAppInitializer  : SpringDoc /v3/api-docs endpoint is enabled by default. To disable it in production, set the property 'springdoc.api-docs.enabled=false'
+2026-09-22T06:46:01.937+08:00  WARN 16236 --- [backend] [main] o.s.core.events.SpringDocAppInitializer  : SpringDoc /swagger-ui.html endpoint is enabled by default. To disable it in production, set the property 'springdoc.swagger-ui.enabled=false'
+2026-09-22T06:46:06.560+08:00  INFO 16236 --- [backend] [http-nio-8098-exec-4] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring DispatcherServlet 'dispatcherServlet'
+2026-09-22T06:46:06.560+08:00  INFO 16236 --- [backend] [http-nio-8098-exec-4] o.s.web.servlet.DispatcherServlet        : Initializing Servlet 'dispatcherServlet'
+2026-09-22T06:46:06.563+08:00  INFO 16236 --- [backend] [http-nio-8098-exec-4] o.s.web.servlet.DispatcherServlet        : Completed initialization in 3 ms

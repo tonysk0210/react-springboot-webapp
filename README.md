@@ -788,31 +788,117 @@ Request Interceptor
   │     └── 補上 X-XSRF-TOKEN header
   └── 發送請求
 
-Response Interceptor
-  ├── 2xx → 正常回傳資料
-  └── 401 → 清除 localStorage token + user → 導向 /login
+Response Interceptor（唯一職責：處理「憑證失效」）
+  ├── 2xx → 原樣回傳，不做任何加工
+  └── 非 2xx
+        ├── 狀態碼為 401 且 localStorage 原本存有 jwtToken
+        │     ├── 移除 jwtToken 與 user（清掉已失效的憑證）
+        │     └── 2 秒後 window.location.href = "/login"
+        │         （延遲是為了讓 ErrorPage 先顯示錯誤訊息）
+        └── 一律 Promise.reject(error) 往外拋
+              → 403 / 404 / 500 等其他錯誤不特別處理，
+                交給呼叫端的 catch 或 loader 的 errorElement
 ```
+
+Response Interceptor 只處理**一件業務：憑證失效後的善後**。它不是通用的錯誤處理器 ——
+後端回 403（權限不足）、404、500 時，攔截器不做任何事，錯誤直接往外拋給 loader 的 `catch`，
+再由 `throw new Response()` 交給 `ErrorPage` 呈現。
+
+會觸發清理的只有 401，而 401 的來源是 `JWTTokenValidatorFilter` —— token 過期或簽章／格式錯誤。
+換句話說：**後端說這張憑證不能用了，前端就把它丟掉並請使用者重新登入**。
+
+兩個容易忽略的細節：
+
+- **`if (jwtToken)` 的前提**：localStorage 原本就沒有 token 時，401 不會觸發清理與跳轉。
+  這避免了「未登入者誤打受保護 API」被莫名導走。
+- **公開端點不受影響**：`/api/v1/products/**` 等公開路徑在後端會被 `shouldNotFilter()` 略過 JWT 驗證，
+  即使帶著過期 token 仍回 2xx，因此不會進到這個攔截器的錯誤分支。
 
 #### 統一錯誤處理
 
 `GlobalExceptionHandler` 以 `@RestControllerAdvice` 攔截所有例外，依例外類型回傳不同格式 — 完整對照表與 JSON 範例見[附錄：錯誤回應格式](#錯誤回應格式)。
 
-#### JPA Auditing
+### 🪝 專案使用的 Hooks
 
-`BaseEntity` 搭配 `@EnableJpaAuditing` 自動填入稽核欄位：
+括號內為實際出現次數，依來源分組。
 
-```java
-@MappedSuperclass
-@EntityListeners(AuditingEntityListener.class)
-public abstract class BaseEntity {
-    @CreatedDate      LocalDateTime createdAt;
-    @LastModifiedDate LocalDateTime updatedAt;
-    @CreatedBy        String createdBy;    // email，由 AuditorAwareImpl 提供
-    @LastModifiedBy   String updatedBy;
-}
-```
+**React 內建**
 
-所有業務資料表皆繼承 `BaseEntity`，系統可追蹤任何記錄的建立者與修改者。
+| Hook | 用途 | 代表用例 |
+|------|------|---------|
+| `useEffect` (23) | 副作用與訂閱 | `auth-context.jsx` 監聽 `authState` 變動寫入 localStorage |
+| `useState` (18) | 元件區域狀態 | `ProductListing.jsx` 的搜尋字串與排序選項 |
+| `useReducer` (9) | 多分支狀態轉換 | `auth-context.jsx` 的 `authReducer`（`LOGIN_SUCCESS` / `LOGOUT`） |
+| `useRef` (8) | 取得 DOM 參照 | `Header.jsx` 偵測選單外部點擊、`Contact.jsx` 送出後重置表單 |
+| `useMemo` (7) | 快取衍生計算 | `ProductListing.jsx` 的搜尋＋排序結果、`Cart.jsx` 的地址完整性判斷 |
+| `useContext` (4) | 讀取 Context | 由 `useAuth()` 包裝後間接使用 |
+
+**React Router**
+
+| Hook | 用途 | 代表用例 |
+|------|------|---------|
+| `useLoaderData` (23) | 取得 `loader` 回傳的資料 | `Orders.jsx` 取訂單列表 |
+| `useNavigate` (19) | 程式化導頁 | 登入成功後跳轉 |
+| `useNavigation` (13) | 讀取導航狀態 | 提交中時停用按鈕、顯示「處理中」 |
+| `useLocation` (13) | 取得當前路徑與 `state` | `ProtectedRoute.jsx` 記錄被擋下的目標頁 |
+| `useActionData` (12) | 取得 `action` 回傳值 | `Login.jsx` 判斷登入成功或顯示錯誤 |
+| `useRouteError` (7) | 取得被 `throw` 的錯誤 | `ErrorPage.jsx` 顯示 status 與訊息 |
+| `useSubmit` (7) | 以程式觸發表單提交 | `Contact.jsx` 送出留言 |
+| `useRevalidator` (5) | 手動重跑 loader | `OrderManage.jsx`、`Message.jsx` 操作後刷新列表 |
+
+**React Redux**
+
+| Hook | 用途 | 代表用例 |
+|------|------|---------|
+| `useSelector` (18) | 讀取 store | `selectCartItems`、`selectTotalQuantity`、`selectTotalPrice` |
+| `useDispatch` (14) | 送出 action | `dispatch(addToCart({ product, quantity }))` |
+
+**Stripe**
+
+| Hook | 用途 | 代表用例 |
+|------|------|---------|
+| `useStripe` (2) | 取得 Stripe 實例 | `CheckoutForm.jsx` 呼叫 `confirmCardPayment()` |
+| `useElements` (2) | 取得 Elements 實例 | 取出 `CardNumberElement` 傳給付款流程 |
+
+**自訂**
+
+| Hook | 用途 | 代表用例 |
+|------|------|---------|
+| `useAuth` (20) | `useContext(AuthContext)` 的薄包裝 | 全站讀取登入狀態與 `loginSuccess` / `logout` |
+
+⚠️ 另有兩個**已定義但未實際使用**的項目：`useCart`（`cart-context.jsx`，遷移至 Redux 前的遺留實作，無任何元件呼叫）、`useParams`（`ProductDetail.jsx` 有 import，但呼叫那行被註解掉，改由 `useLocation` 的 `state` 取得商品）。
+
+### 💾 瀏覽器儲存的使用
+
+三種儲存機制各有明確分工：**localStorage 放需跨分頁與重啟保留的狀態，sessionStorage 放一次性的導頁旗標，cookie 只用於 CSRF**。
+
+**localStorage**（關閉瀏覽器後仍保留）
+
+| Key | 內容 | 寫入處 | 使用場景 |
+|-----|------|--------|---------|
+| `jwtToken` | JWT 字串 | `auth-context.jsx` 的 `useEffect` | 每次 API 請求由 `apiClient` 取出補上 `Authorization` 標頭；401 時移除 |
+| `user` | `UserDto` 的 JSON | 同上 | Header 顯示名稱、判斷是否顯示管理選單、結帳前檢查地址是否完整 |
+| `cart` | 購物車陣列的 JSON | `store.js` 的 `store.subscribe()` | 每次 dispatch 後同步；重新整理或關閉瀏覽器後購物車不遺失 |
+| `mode` | `"dark"` / `"light"` | `Header.jsx` 切換深色模式時 | 下次進站沿用上次的主題；`CheckoutForm.jsx` 也讀它來決定 Stripe 欄位配色 |
+
+**sessionStorage**（關閉分頁即清除）
+
+三個都是**導頁流程用的暫時旗標**，用完即刪：
+
+| Key | 內容 | 使用場景 |
+|-----|------|---------|
+| `redirectPath` | 被擋下的目標路徑 | 未登入存取受保護頁時，由 `ProtectedRoute` 或 `requireAuth()` 記下；登入成功後 `Login.jsx` 讀出並導回原頁，再移除 |
+| `logoutRedirect` | `"true"` | 在受保護頁按登出時由 `Header.jsx` 設定，讓 `ProtectedRoute` 改導向 `/home` 而非 `/login`，也避免把該頁寫進 `redirectPath` |
+| `skipRedirectPath` | `"true"` | 更新 email 後被強制登出時由 `Profile.jsx` 設定，讓登入後不要導回 `/profile` |
+
+**Cookie**（由後端 `Set-Cookie` 寫入，前端以 `js-cookie` 讀取）
+
+| Cookie | 來源 | 使用場景 |
+|--------|------|---------|
+| `XSRF-TOKEN` | `CookieCsrfTokenRepository.withHttpOnlyFalse()` | 非安全方法（POST / PUT / PATCH / DELETE）送出前，`apiClient` 讀出其值放進 `X-XSRF-TOKEN` 標頭供後端比對；`httpOnly=false` 是為了讓 JavaScript 讀得到 |
+| `JSESSIONID` | Spring Security 建立 session 時 | 僅用於 `formLogin` 的瀏覽器工具（H2 Console、Swagger UI）；REST API 走無狀態 JWT，不依賴它 |
+
+`apiClient` 設定 `withCredentials: true` 才能在跨來源（`:5173` → `:8080`）請求中攜帶與接收 cookie；後端 `CorsConfig` 對應設 `allowCredentials(true)`。
 
 ---
 
@@ -1164,23 +1250,6 @@ npm run lint            # ESLint 檢查
 
 > JWT 驗證失敗（token 過期或格式錯誤）由 `JWTTokenValidatorFilter` 直接寫入 401 JSON，**不經過** `GlobalExceptionHandler` — 因為 Filter 執行於 DispatcherServlet 之前。
 
-### 資料表說明
-
-| 資料表 | 主鍵 | 關鍵欄位 | 說明 |
-|-------|------|---------|------|
-| `CUSTOMERS` | customer_id | email UNIQUE, mobile_number UNIQUE, password_hash | 客戶主表，密碼以 BCrypt 雜湊儲存 |
-| `ROLES` | role_id | name UNIQUE | `ROLE_ADMIN`、`ROLE_USER`、`ROLE_OP` |
-| `CUSTOMER_ROLES` | (customer_id, role_id) | CASCADE DELETE | 多對多關聯的 Junction Table |
-| `ADDRESS` | address_id | customer_id UNIQUE FK | 每位客戶最多一個地址，隨客戶刪除而刪除 |
-| `PRODUCTS` | product_id | name, price DECIMAL(10,2), popularity, image_url | 30 筆種子資料，`popularity` 欄位供前端排序 |
-| `ORDERS` | order_id | customer_id FK, total_price, payment_id, payment_status, order_status | `payment_id` 為 Stripe PaymentIntent ID |
-| `ORDER_ITEMS` | order_item_id | order_id FK, product_id FK, quantity, price | 快照下單當下商品價格，與 `PRODUCTS` 解耦 |
-| `CONTACTS` | contact_id | status (`OPEN` / `CLOSED`) | 聯絡表單，管理員可標記為 `CLOSED` |
-
-除 `CUSTOMER_ROLES` 外，所有資料表均繼承 `BaseEntity` 的四個稽核欄位：`created_at`、`updated_at`、`created_by`、`updated_by`。`CUSTOMER_ROLES` 為純中介表（複合主鍵 + 兩個外鍵），無對應 Entity，故不帶稽核欄位。
-
-> `ROLE_OP` 存在於種子資料且已指派給 admin 帳號，但目前 `MySecurityConfig` 的授權規則並未使用它 — 屬於預留角色。
-
 ### Spring Profiles 對照
 
 | Profile | 資料庫 | SQL 初始化 | Log Level | SQL 輸出 | H2 Console | springdoc |
@@ -1189,36 +1258,4 @@ npm run lint            # ESLint 檢查
 | `qa` | H2 | 自動執行 | WARN | 關閉 | 啟用 | 啟用 |
 | `prod` | MySQL（環境變數注入） | `never`（不執行） | ERROR | 關閉 | 停用 | 停用 |
 
-資料庫方言（`spring.jpa.database-platform`）已於 Boot 4 升級時移除，改由 Hibernate 7 依 JDBC 連線自動判斷。
-
 各 Profile 另綁定不同的聯絡資訊（`contact.phone` / `contact.email` / `contact.address`），由 `ContactInfoDto` 經 `@ConfigurationProperties` 注入，供 `GET /api/v1/contacts` 回傳。
-
-### 已知限制與後續規劃
-
-本專案為個人作品，以下為目前的已知缺口，誠實列出：
-
-| 項目 | 現況 | 規劃 |
-|------|------|------|
-| **測試覆蓋** | 後端僅有 `BackendApplicationTests` 的 `contextLoads()` 冒煙測試；前端無測試框架 | 補 Service 層單元測試、Controller 層 `@WebMvcTest`、前端導入 Vitest + Testing Library |
-| **CI/CD** | `main` 分支無 `.github/workflows`，無自動化建構與測試 | 建立 GitHub Actions：後端 `mvn verify`、前端 `npm run lint && npm run build` |
-| **容器化** | 無 Dockerfile / docker-compose | 補前後端 Dockerfile 與一鍵啟動的 compose 設定 |
-| **遺留程式碼** | `src/store/cart-context.jsx` 為遷移至 Redux 前的實作，`CheckoutForm.jsx` 仍同時引用 Context 與 Redux selector | 統一收斂至 Redux，移除 Context 版本 |
-| **前端 Admin 守衛** | `ProtectedRoute` 僅檢查登入狀態，未檢查 ADMIN 角色（安全性由後端保證，但 UX 上會先看到 403） | 新增 `AdminRoute` 元件，前端先行攔截 |
-| **JWT 效期偏短** | 20 分鐘，且無 refresh token 機制，閒置後需重新登入 | 導入 refresh token，或延長效期並加上滑動續期 |
-| **JWT 未帶 `customerId`** | 以 `email` 作為 principal，每次請求需依 email 反查使用者 | 於 claims 加入 `customerId`，減少查詢 |
-| **交易邊界僅涵蓋訂單查詢** | 已為 `OrderServiceImpl` 的兩個查詢方法補上 `@Transactional(readOnly = true)`；但 `createOrder()`、`updateOrderStatus()` 等寫入方法仍未標註，多個 repository 操作非單一原子單位。OSIV 維持開啟（`true`），LAZY 關聯的載入時機因此較寬鬆 | 為寫入方法補上 `@Transactional`；查詢端可再用 `JOIN FETCH` / `@EntityGraph` 消除 N+1 |
-| **jjwt 仍相依 Jackson 2** | Boot 4 已改用 Jackson 3，但 `jjwt-jackson` 0.13.0 仍需 Jackson 2，故 `pom.xml` 額外保留 `jackson-databind`（2.21.5） | 待 jjwt 發布支援 Jackson 3 的版本後移除該相依 |
-| **`.env.localhost`** | `npm run build:localhost` 指定 `--mode localhost` 但無對應檔案，實際回退至 `.env` | 補上 `.env.localhost` 或移除該 script |
-| **授權條款** | 無 LICENSE 檔 | 視用途補上 MIT 或其他授權 |
-
-### 專案文件索引
-
-| 檔案 | 用途 |
-|------|------|
-| `README.md` | 本文件 — 專案總覽 |
-| `CLAUDE.md` | 給 Claude Code 的專案指引（架構速查、開發規範） |
-| `AGENTS.md` | 給 AI 編碼代理的通用倉庫指引（英文） |
-| `backend/CLAUDE.md` / `backend/AGENTS.md` | 後端專屬指引 |
-| `frontend/README.md` | 前端快速啟動與指令 |
-| `docs/screenshots/README.md` | 截圖規格與拍攝指引 |
-| `backend/src/main/resources/getProducts.http` | HTTP Client 請求範例（IntelliJ / VS Code REST Client） |
