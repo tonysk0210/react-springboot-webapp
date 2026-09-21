@@ -408,7 +408,7 @@ backend/src/main/java/com/example/backend/
 │   ├── MySecurityConfig.java        SecurityFilterChain 定義
 │   ├── JWTTokenValidatorFilter.java OncePerRequestFilter，解析 Bearer token
 │   ├── MyAuthenticationProvider.java 自訂認證邏輯（查 DB + BCrypt）
-│   ├── JwtUtil.java                 generateJwtToken / 解析 Claims
+│   ├── JwtUtil.java                 只負責簽發：generateJwtToken()（解析在上面的 Filter）
 │   └── PublicPathConfig.java        公開路徑 bean，集中管理
 └── service/
     ├── *Service.java                介面定義（依賴倒置原則）
@@ -553,18 +553,6 @@ private Product product;
 - 所有 Entity 繼承 `entity/BaseEntity` 的四個稽核欄位（`Instant createdAt` / `updatedAt`、`String createdBy` / `updatedBy`），由 `@EnableJpaAuditing` + `config/AuditorAwareImpl` 自動填入。未登入時 auditor 回傳的是 **`"SYSTEM"`**；已登入時取 `Customer.email`。註冊這類未登入寫入流程即靠此機制才不會因 `created_by` 為 null 而失敗
 - `ORDER_ITEMS.price` 儲存的是**下單當下的單價快照**，與 `PRODUCTS.price` 解耦 —— 日後調整商品售價不會回頭改寫歷史訂單金額
 
-**Fetch 策略**（決定一次查詢會連帶撈出多少資料）
-
-| 關聯 | 實際註解 | Fetch | 來源 |
-|------|---------|-------|------|
-| `Customer.roles` → `Role` | `@ManyToMany(fetch = EAGER)` + `@JoinTable` | **EAGER** | 明示（覆寫掉 `@ManyToMany` 的 LAZY 預設） |
-| `Customer.address` → `Address` | `@OneToOne(mappedBy = "customer", cascade = ALL)` | **EAGER** | 未指定 → `@OneToOne` 預設即 EAGER |
-| `Address.customer` | `@OneToOne(fetch = LAZY, optional = false)` + `@JoinColumn` | LAZY | 明示；owning side（FK 在 `ADDRESS`） |
-| `Order.customer` | `@ManyToOne(fetch = LAZY, optional = false)` | LAZY | 明示（覆寫掉 `@ManyToOne` 的 EAGER 預設） |
-| `Order.orderItems` → `OrderItem` | `@OneToMany(mappedBy = "order", ...)` | LAZY | 未指定 → `@OneToMany` 預設即 LAZY |
-| `OrderItem.order` / `.product` | `@ManyToOne(fetch = LAZY, optional = false)` ×2 | LAZY | 明示 |
-| `Role.customers` | `@ManyToMany(mappedBy = "roles")` | LAZY | 未指定 → `@ManyToMany` 預設即 LAZY |
-
 ---
 
 ## 3. 核心功能與亮點
@@ -604,9 +592,16 @@ private Product product;
 5. 後續請求 Header: Authorization: Bearer <token>
 6. JWTTokenValidatorFilter (OncePerRequestFilter)
        ↓ 驗證簽名 + 檢查效期 → 以 email 為 principal 設定 SecurityContext
-7. 驗證失敗 → Filter 直接寫入 401 JSON（繞過 GlobalExceptionHandler）
-8. 前端 Axios Response Interceptor
-       ↓ 捕捉 401 → 清除 localStorage → 導向 /login
+7. 驗證失敗（token 過期，或簽章／格式錯誤）
+       ↓ Filter 不丟例外，而是自己寫出回應並中止整條 filter 鏈：
+           過期 → 401 {"errorMessage": "JWT Token 已過期！"}
+           無效 → 401 {"errorMessage": "這是無效的 Token！"}
+         （Filter 執行於 DispatcherServlet 之前，@RestControllerAdvice 攔不到，
+           故格式與 GlobalExceptionHandler 的四欄位 ExceptionResponseDto 不同）
+8. 前端 apiClient.js 的 Response Interceptor 收到 401
+       ↓ 若 localStorage 原本存有 jwtToken，才執行清理：
+           移除 jwtToken 與 user → 2 秒後導向 /login
+       ↓ 同時仍 Promise.reject(error)，讓 ErrorPage 有時間顯示錯誤訊息
 ```
 
 **設計要點**：JWT 為無狀態（Stateless），後端不需維護 Session，適合水平擴展。Token payload 內嵌 roles，省去每次請求查詢資料庫的開銷。
