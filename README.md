@@ -149,11 +149,9 @@ sequenceDiagram
     Note over F,A: 後續請求皆帶 Authorization 標頭（Bearer token）<br/>由 JWTTokenValidatorFilter 驗證
 ```
 
-失敗時的 `message` 直接取自例外訊息 —— `MyAuthenticationProvider` 丟出 `BadCredentialsException("密碼錯誤")` 或 `UsernameNotFoundException("無法找到該使用者: " + email)`，`AuthController.buildErrorResponse()` 再把它放進 `LoginResponseDto` 的 `message` 欄位（`user` 與 `jwtToken` 皆為 `null`）。
+失敗時的 `message` 為例外訊息本身：密碼錯誤時是「密碼錯誤」，查無帳號時是「無法找到該使用者: {email}」；前端以 `error.response?.data?.message` 取值後交由 `toast.error()` 顯示。
 
-前端 `Login.jsx` 以 `error.response?.data?.message || "輸入的帳號或密碼錯誤"` 取值，因此**後端訊息優先**；只有在連線失敗等拿不到回應主體的情況下，才會顯示那句預設文字。最終由 `toast.error()` 呈現。
-
-### 頁面地圖
+### 前端頁面地圖
 
 ```mermaid
 flowchart TD
@@ -187,7 +185,7 @@ flowchart TD
     Root --> EP["ErrorPage<br/>errorElement"]
 ```
 
-### 路由與元件全貌
+### 前端路由與元件全貌
 
 上圖聚焦在路由的存取層級；下圖則把 Provider 巢狀、路由定義、元件組成與 API 呼叫串在一起，可看出每個頁面實際由哪些元件構成、以及哪些頁面會打後端。
 
@@ -289,7 +287,7 @@ flowchart TD
 
 ## 2. 系統架構與專案結構
 
-### 系統架構
+### 後端系統架構
 
 ```mermaid
 flowchart TB
@@ -807,13 +805,6 @@ Response Interceptor 只處理**一件業務：憑證失效後的善後**。它�
 會觸發清理的只有 401，而 401 的來源是 `JWTTokenValidatorFilter` —— token 過期或簽章／格式錯誤。
 換句話說：**後端說這張憑證不能用了，前端就把它丟掉並請使用者重新登入**。
 
-兩個容易忽略的細節：
-
-- **`if (jwtToken)` 的前提**：localStorage 原本就沒有 token 時，401 不會觸發清理與跳轉。
-  這避免了「未登入者誤打受保護 API」被莫名導走。
-- **公開端點不受影響**：`/api/v1/products/**` 等公開路徑在後端會被 `shouldNotFilter()` 略過 JWT 驗證，
-  即使帶著過期 token 仍回 2xx，因此不會進到這個攔截器的錯誤分支。
-
 #### 統一錯誤處理
 
 `GlobalExceptionHandler` 以 `@RestControllerAdvice` 攔截所有例外，依例外類型回傳不同格式 — 完整對照表與 JSON 範例見[附錄：錯誤回應格式](#錯誤回應格式)。
@@ -830,7 +821,7 @@ Response Interceptor 只處理**一件業務：憑證失效後的善後**。它�
 | `useState` (18) | 元件區域狀態 | `ProductListing.jsx` 的搜尋字串與排序選項 |
 | `useReducer` (9) | 多分支狀態轉換 | `auth-context.jsx` 的 `authReducer`（`LOGIN_SUCCESS` / `LOGOUT`） |
 | `useRef` (8) | 取得 DOM 參照 | `Header.jsx` 偵測選單外部點擊、`Contact.jsx` 送出後重置表單 |
-| `useMemo` (7) | 快取衍生計算 | `ProductListing.jsx` 的搜尋＋排序結果、`Cart.jsx` 的地址完整性判斷 |
+| `useMemo` (7) | 快取衍生計算 | `ProductListing.jsx` 的搜尋＋排序結果；`Cart.jsx` 的 `isAddressIncomplete`（地址五欄是否有缺）與 `isCartEmpty` |
 | `useContext` (4) | 讀取 Context | 由 `useAuth()` 包裝後間接使用 |
 
 **React Router**
