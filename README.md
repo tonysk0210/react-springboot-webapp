@@ -693,13 +693,42 @@ JWT 與 CSRF 對應不同攻擊面，兩者並存：
 - `store.subscribe()` 在每次狀態變更後自動同步至 `localStorage["cart"]`，刷新頁面不遺失
 - `createSlice` + Immer（內建）允許直接「修改」state，無需手寫展開運算子
 
+`cart-slice.js` 的 `addToCart` —— state 本身就是商品陣列，payload 為 `{ product, quantity }`：
+
 ```js
-// cartSlice 核心邏輯示意
-addToCart: (state, action) => {
-  const existing = state.items.find(i => i.productId === action.payload.productId);
-  existing ? existing.quantity++ : state.items.push({ ...action.payload, quantity: 1 });
+addToCart(currentState, action) {
+  const { product, quantity } = action.payload;
+  const existingItem = currentState.find((item) => item.id === product.id);
+
+  if (existingItem) {
+    existingItem.quantity += quantity;            // 已在購物車 → 累加數量
+  } else {
+    currentState.push({ ...product, quantity });  // 不在購物車 → 新增一筆
+  }
 }
 ```
+
+同樣的邏輯，若寫在沒有 Immer 的一般 reducer（例如 React Context 的 `useReducer`）中，必須自己產生新陣列：
+
+```js
+function cartReducer(currentState, action) {
+  const { product, quantity } = action.payload;
+  const existingItem = currentState.find((item) => item.id === product.id);
+
+  if (existingItem) {
+    return currentState.map((item) =>
+      item.id === product.id
+        ? { ...item, quantity: item.quantity + quantity }  // 目標商品：複製後改數量
+        : item,                                            // 其他商品：原樣保留
+    );
+  }
+  return [...currentState, { ...product, quantity }];       // 展開舊陣列再接上新商品
+}
+```
+
+差別在於 **Redux Toolkit 內建 Immer**：`createSlice` 的 reducer 收到的是 draft proxy，`push()`、`+=` 這類寫法會被攔截並轉譯成不可變更新。直接寫 `currentState.push(...)` 不會真的改到原本的 state，但程式碼讀起來像一般的陣列操作。
+
+⚠️ 兩種風格**不能混用** —— 在 `createSlice` 中若同時修改 draft 又 `return` 新值，Immer 會拋出 `An immer producer returned a new value *and* modified its draft`。本專案的 `removeFromCart` 與 `clearCart` 採用 return 新陣列的寫法，`addToCart` 則採直接修改，各自維持一致。
 
 **React Context — 身份驗證**
 
