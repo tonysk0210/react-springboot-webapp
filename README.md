@@ -185,100 +185,93 @@ flowchart TD
 
 ### 路由與元件全貌
 
-上圖聚焦在路由的存取層級；下圖則把 Provider 巢狀、路由定義、元件組成與 API 呼叫串在一起，可看出每個頁面實際由哪些元件構成、以及哪些頁面會打後端。
+拆成三張分別呈現，避免單張圖節點過多而被壓縮。
+
+**① Provider 巢狀與版面**
 
 ```mermaid
-flowchart TD
-    Root["React Root<br/>#root"]
+flowchart LR
+    Root["React Root<br/>#root"] --> Strict["StrictMode"]
+    Strict --> Elements["Elements<br/>Stripe Provider"]
+    Elements --> Auth["AuthProvider<br/>AuthContext + useReducer"]
+    Elements --> Toast["ToastContainer<br/>top-center / 3s"]
+    Auth --> Redux["Redux Provider<br/>cart store"]
+    Redux --> Router["RouterProvider<br/>appRouter"]
+    Router --> AppRoute["Root Route: /<br/>element: App"]
 
-    Strict["StrictMode"]
-    Elements["Elements<br/>Stripe Provider"]
-    Auth["AuthProvider<br/>AuthContext + useReducer"]
-    Redux["Redux Provider<br/>cart store"]
-    Router["RouterProvider<br/>appRouter"]
+    AppRoute --> App["App Layout"]
+    AppRoute -.錯誤時.-> ErrorPage["ErrorPage<br/>errorElement"]
+    App --> Header["Header"]
+    App --> Footer["Footer"]
+    App --> AppOutlet["Outlet"]
 
-    Root --> Strict --> Elements
-    Elements --> Auth
-    Auth --> Redux
-    Redux --> Router
-    Elements --> Toast["ToastContainer"]
+    Auth -.-> AuthContext["auth-context.jsx"]
+    Redux -.-> CartStore["cart-slice.js / store.js"]
+```
 
-    Router --> AppRoute
+**② 路由定義**
 
-    subgraph ROUTER["routeDefinitions"]
-        AppRoute["Root Route: /<br/>element: App<br/>errorElement: ErrorPage"]
+```mermaid
+flowchart LR
+    AppOutlet["App Outlet"]
 
-        AppRoute --> App["App Layout"]
-        App --> Header["Header"]
-        App --> AppOutlet["App Outlet"]
-        App --> Footer["Footer"]
-
-        AppRoute -.錯誤時.-> ErrorPage["ErrorPage"]
-
-        subgraph PUBLIC["公開路由"]
-            AppOutlet --> HomeIndex["/ index<br/>Home<br/>loader: productsLoader"]
-            AppOutlet --> Home["/home<br/>Home<br/>loader: productsLoader"]
-            AppOutlet --> About["/about<br/>About"]
-            AppOutlet --> Contact["/contact<br/>Contact<br/>loader: contactLoader<br/>action: contactAction"]
-            AppOutlet --> Login["/login<br/>Login<br/>action: loginAction"]
-            AppOutlet --> Cart["/cart<br/>Cart"]
-            AppOutlet --> Product["/products/:productId<br/>ProductDetail"]
-            AppOutlet --> Register["/register<br/>Register<br/>action: registerAction"]
-        end
-
-        subgraph PROTECTED["需要登入的路由"]
-            AppOutlet --> Guard["ProtectedRoute<br/>登入檢查"]
-            Guard --> GuardOutlet["ProtectedRoute Outlet"]
-
-            GuardOutlet --> Checkout["/checkout<br/>CheckoutForm<br/>Stripe Elements"]
-            GuardOutlet --> Success["/order-success<br/>OrderSuccess"]
-            GuardOutlet --> Orders["/orders<br/>Orders<br/>loader: ordersLoader"]
-            GuardOutlet --> Profile["/profile<br/>Profile<br/>loader: profileLoader<br/>action: profileAction"]
-            GuardOutlet --> OrderManage["/admin/orderManage<br/>OrderManage<br/>loader: orderManageLoader"]
-            GuardOutlet --> Messages["/admin/messages<br/>Message<br/>loader: messagesLoader"]
-        end
+    subgraph PUBLIC["公開路由"]
+        direction TB
+        HomeIndex["/ ・/home<br/>Home<br/>loader: productsLoader"]
+        About["/about<br/>About"]
+        Contact["/contact<br/>Contact<br/>loader + action"]
+        Login["/login<br/>Login<br/>action: loginAction"]
+        Register["/register<br/>Register<br/>action: registerAction"]
+        Cart["/cart<br/>Cart"]
+        Product["/products/:productId<br/>ProductDetail"]
     end
 
-    subgraph COMPONENTS["主要 Component 內部關係"]
-        Home --> Listing["ProductListing"]
-        Listing --> Card["ProductCard"]
+    subgraph PROTECTED["需登入（ProtectedRoute）"]
+        direction TB
+        Checkout["/checkout<br/>CheckoutForm"]
+        Success["/order-success<br/>OrderSuccess"]
+        Orders["/orders<br/>Orders<br/>loader: ordersLoader"]
+        Profile["/profile<br/>Profile<br/>loader + action"]
+        OrderManage["/admin/orderManage<br/>OrderManage<br/>loader: orderManageLoader"]
+        Messages["/admin/messages<br/>Message<br/>loader: messagesLoader"]
+    end
+
+    AppOutlet --> PUBLIC
+    AppOutlet --> Guard["ProtectedRoute<br/>登入檢查"]
+    Guard --> PROTECTED
+    Guard -.-> Guards["authRouteGuards.js<br/>requireAuth"]
+```
+
+**③ 元件組成與 API 呼叫**
+
+```mermaid
+flowchart LR
+    subgraph COMP["頁面的元件組成"]
+        direction TB
+        Home2["Home"] --> Listing["ProductListing"]
         Listing --> Search["SearchBox"]
         Listing --> Sort["DropDown"]
+        Listing --> Card["ProductCard"]
         Card --> Price["Price"]
-
-        Cart --> CartTable["CartTable"]
-
-        Checkout --> StripeCard["CardNumberElement"]
-        Checkout --> StripeExpiry["CardExpiryElement"]
-        Checkout --> StripeCvc["CardCvcElement"]
-
-        Login --> LoginForm["React Router Form"]
-        Register --> RegisterForm["React Router Form"]
-        Profile --> ProfileForm["Profile Form"]
-        Contact --> ContactForm["Contact Form"]
+        Cart2["Cart"] --> CartTable["CartTable"]
+        Checkout2["CheckoutForm"] --> SC["CardNumberElement"]
+        Checkout2 --> SE["CardExpiryElement"]
+        Checkout2 --> SV["CardCvcElement"]
     end
 
-    subgraph SUPPORT["共用狀態與 API"]
-        API["apiClient.js<br/>Axios + JWT + CSRF + 401"]
-        AuthContext["auth-context.jsx<br/>登入狀態"]
-        CartStore["cart-slice.js / store.js<br/>購物車狀態"]
-        Guards["authRouteGuards.js<br/>requireAuth"]
+    subgraph CALLS["會呼叫後端的頁面"]
+        direction TB
+        P1["Login / Register"]
+        P2["Contact / Profile"]
+        P3["Orders / CheckoutForm"]
+        P4["OrderManage / Message"]
     end
 
-    Login --> API
-    Register --> API
-    Contact --> API
-    Profile --> API
-    Orders --> API
-    Checkout --> API
-    OrderManage --> API
-    Messages --> API
-
-    Auth --> AuthContext
-    Redux --> CartStore
-    Guard --> Guards
-
-    API --> Backend["Spring Boot REST API"]
+    P1 --> API
+    P2 --> API
+    P3 --> API
+    P4 --> API
+    API["apiClient.js<br/>Axios 實例<br/>JWT + CSRF + 401 處理"] --> Backend["Spring Boot REST API<br/>:8080"]
 ```
 
 ---
