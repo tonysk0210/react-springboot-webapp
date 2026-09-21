@@ -188,7 +188,7 @@ flowchart TD
 上圖聚焦在路由的存取層級；下圖則把 Provider 巢狀、路由定義、元件組成與 API 呼叫串在一起，可看出每個頁面實際由哪些元件構成、以及哪些頁面會打後端。
 
 ```mermaid
-flowchart TD
+flowchart LR
     Root["React Root<br/>#root"]
 
     Strict["StrictMode"]
@@ -206,6 +206,7 @@ flowchart TD
     Router --> AppRoute
 
     subgraph ROUTER["routeDefinitions"]
+        direction TB
         AppRoute["Root Route: /<br/>element: App<br/>errorElement: ErrorPage"]
 
         AppRoute --> App["App Layout"]
@@ -216,6 +217,7 @@ flowchart TD
         AppRoute -.錯誤時.-> ErrorPage["ErrorPage"]
 
         subgraph PUBLIC["公開路由"]
+        direction TB
             AppOutlet --> HomeIndex["/ index<br/>Home<br/>loader: productsLoader"]
             AppOutlet --> Home["/home<br/>Home<br/>loader: productsLoader"]
             AppOutlet --> About["/about<br/>About"]
@@ -227,6 +229,7 @@ flowchart TD
         end
 
         subgraph PROTECTED["需要登入的路由"]
+        direction TB
             AppOutlet --> Guard["ProtectedRoute<br/>登入檢查"]
             Guard --> GuardOutlet["ProtectedRoute Outlet"]
 
@@ -240,6 +243,7 @@ flowchart TD
     end
 
     subgraph COMPONENTS["主要 Component 內部關係"]
+        direction TB
         Home --> Listing["ProductListing"]
         Listing --> Card["ProductCard"]
         Listing --> Search["SearchBox"]
@@ -259,6 +263,7 @@ flowchart TD
     end
 
     subgraph SUPPORT["共用狀態與 API"]
+        direction TB
         API["apiClient.js<br/>Axios + JWT + CSRF + 401"]
         AuthContext["auth-context.jsx<br/>登入狀態"]
         CartStore["cart-slice.js / store.js<br/>購物車狀態"]
