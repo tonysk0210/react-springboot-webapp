@@ -1,7 +1,1 @@
-2026-09-21T02:38:34.222+08:00  WARN 28524 --- [backend] [http-nio-8080-exec-9] c.e.b.security.JWTTokenValidatorFilter   : JWT Token 已過期: JWT expired 2294219 milliseconds ago at 2026-09-20T18:00:20.000Z. Current time: 2026-09-20T18:38:34.219Z. Allowed clock skew: 0 milliseconds.
-2026-09-21T21:00:57.505+08:00  WARN 28524 --- [backend] [HikariPool-7:housekeeper] com.zaxxer.hikari.pool.HikariPool        : HikariPool-7 - Thread starvation or clock leap detected (housekeeper delta=16h15m1s7ms965µs400ns).
-2026-09-21T22:20:04.818+08:00  WARN 28524 --- [backend] [http-nio-8080-exec-9] c.e.b.security.JWTTokenValidatorFilter   : JWT Token 已過期: JWT expired 69652816 milliseconds ago at 2026-09-20T18:59:12.000Z. Current time: 2026-09-21T14:20:04.816Z. Allowed clock skew: 0 milliseconds.
-2026-09-21T22:20:46.436+08:00  INFO 28524 --- [backend] [http-nio-8080-exec-1] c.e.backend.config.AuditorAwareImpl      : AuditorAwareImpl 目前稽核操作者：admin@gmail.com
-2026-09-21T22:20:46.618+08:00  INFO 28524 --- [backend] [http-nio-8080-exec-1] c.e.backend.config.AuditorAwareImpl      : AuditorAwareImpl 目前稽核操作者：admin@gmail.com
-2026-09-21T22:20:46.640+08:00  INFO 28524 --- [backend] [http-nio-8080-exec-1] c.e.backend.config.AuditorAwareImpl      : AuditorAwareImpl 目前稽核操作者：admin@gmail.com
-2026-09-21T22:20:46.643+08:00  INFO 28524 --- [backend] [http-nio-8080-exec-1] c.e.backend.config.AuditorAwareImpl      : AuditorAwareImpl 目前稽核操作者：admin@gmail.com
+2026-09-22T05:49:11.729+08:00  WARN 28524 --- [backend] [HikariPool-7:housekeeper] com.zaxxer.hikari.pool.HikariPool        : HikariPool-7 - Thread starvation or clock leap detected (housekeeper delta=5h15m41s221ms504µs).

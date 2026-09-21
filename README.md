@@ -688,10 +688,13 @@ JWT 與 CSRF 對應不同攻擊面，兩者並存：
 
 **Redux Toolkit — 購物車**
 
-- 購物車狀態需跨多個頁面共享（首頁、商品頁、購物車頁、結帳頁）
-- 需要複雜的 Reducer 邏輯（加入相同商品時累加數量而非新增條目）
-- `store.subscribe()` 在每次狀態變更後自動同步至 `localStorage["cart"]`，刷新頁面不遺失
-- `createSlice` + Immer（內建）允許直接「修改」state，無需手寫展開運算子
+- **狀態存放**：`configureStore` 建立的 store，掛在 `state.cart`（一個商品陣列）
+- **元件讀取**：`useSelector(selectCartItems)`
+- **元件寫入**：`dispatch(addToCart({ product, quantity }))`，經 action creator 轉成 action 物件
+- **更新邏輯**：`createSlice` 的三個 reducer（`addToCart` / `removeFromCart` / `clearCart`），搭配 Immer 可直接改寫 state
+- **衍生資料**：三個 selector，其中 `selectTotalQuantity`、`selectTotalPrice` 由購物車內容即時算出
+- **持久化**：`store.subscribe()` 訂閱整個 store，任何變更後把 `state.cart` 寫入 localStorage 的 `cart`
+- **初始值**：`initialState` 在建立 slice 時從 localStorage 還原
 
 `cart-slice.js` 的 `addToCart` —— state 本身就是商品陣列，payload 為 `{ product, quantity }`：
 
@@ -726,16 +729,15 @@ function cartReducer(currentState, action) {
 }
 ```
 
-差別在於 **Redux Toolkit 內建 Immer**：`createSlice` 的 reducer 收到的是 draft proxy，`push()`、`+=` 這類寫法會被攔截並轉譯成不可變更新。直接寫 `currentState.push(...)` 不會真的改到原本的 state，但程式碼讀起來像一般的陣列操作。
-
-⚠️ 兩種風格**不能混用** —— 在 `createSlice` 中若同時修改 draft 又 `return` 新值，Immer 會拋出 `An immer producer returned a new value *and* modified its draft`。本專案的 `removeFromCart` 與 `clearCart` 採用 return 新陣列的寫法，`addToCart` 則採直接修改，各自維持一致。
-
 **React Context — 身份驗證**
 
-- 認證狀態（token、user）更新頻率極低（僅登入／登出時變動）
-- 不需要 Redux DevTools 調試認證流程
-- 避免過度工程化：Context 對於低頻更新的全局狀態已完全足夠
-- `localStorage` 持久化讓頁面刷新後自動恢復登入狀態
+- **狀態存放**：`AuthProvider` 內的 `useReducer(authReducer, initialAuthState)`，無獨立 store
+- **元件讀取**：`useAuth()` —— 對 `useContext(AuthContext)` 的薄包裝
+- **元件寫入**：直接呼叫 Provider 提供的 `loginSuccess(jwtToken, user)` 與 `logout()`，不需 dispatch
+- **更新邏輯**：`authReducer` 以 `switch` 處理 `LOGIN_SUCCESS` / `LOGOUT` 兩個 case
+- **衍生資料**：無，元件直接取用 `authState` 的欄位
+- **持久化**：`useEffect` 監聽 `authState`，變動時寫入 localStorage 的 `jwtToken` 與 `user`
+- **初始值**：IIFE `initialAuthState` 在模組載入時從 localStorage 還原
 
 #### React Router 7 Data API
 
