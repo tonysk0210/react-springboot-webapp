@@ -601,7 +601,8 @@ private Product product;
 8. 前端 apiClient.js 的 Response Interceptor 收到 401
        ↓ 若 localStorage 原本存有 jwtToken，才執行清理：
            移除 jwtToken 與 user → 2 秒後導向 /login
-       ↓ 同時仍 Promise.reject(error)，讓 ErrorPage 有時間顯示錯誤訊息
+       ↓ 同時仍 Promise.reject(error) 把錯誤往外傳，loader 的 catch 才會觸發並顯示 ErrorPage
+         （上面那 2 秒延遲，則是讓 ErrorPage 來得及被看到再跳轉）
 ```
 
 **設計要點**：JWT 為無狀態（Stateless），後端不需維護 Session，適合水平擴展。Token payload 內嵌 roles，省去每次請求查詢資料庫的開銷。
