@@ -857,8 +857,6 @@ Response Interceptor 只處理**一件業務：憑證失效後的善後**。它�
 |------|------|---------|
 | `useAuth` (20) | `useContext(AuthContext)` 的薄包裝 | 全站讀取登入狀態與 `loginSuccess` / `logout` |
 
-⚠️ 另有兩個**已定義但未實際使用**的項目：`useCart`（`cart-context.jsx`，遷移至 Redux 前的遺留實作，無任何元件呼叫）、`useParams`（`ProductDetail.jsx` 有 import，但呼叫那行被註解掉，改由 `useLocation` 的 `state` 取得商品）。
-
 ### 💾 瀏覽器儲存的使用
 
 三種儲存機制各有明確分工：**localStorage 放需跨分頁與重啟保留的狀態，sessionStorage 放一次性的導頁旗標，cookie 只用於 CSRF**。
@@ -1109,11 +1107,6 @@ npm run lint            # ESLint 檢查
 |------|------|----------|------|
 | POST | `/auth/login` | `{ userName, password }` | `{ message, user, jwtToken }` |
 | POST | `/auth/register` | `{ name, email, mobileNumber, password }` | 201 Created |
-
-> **`userName` 欄位傳入的是 email** — `MyAuthenticationProvider` 依 email 查詢使用者。
-> 兩個端點雖為 `permitAll`，但**未列入 CSRF 豁免**，呼叫前必須先取得 `XSRF-TOKEN`（見下方 curl 範例）。
->
-> `user` 物件為 `{ id, name, email, mobileNumber, role, address }`，其中 `role` 是逗號分隔字串，例如 `"ROLE_ADMIN,ROLE_OP,ROLE_USER"`。
 
 #### 商品（公開）
 
