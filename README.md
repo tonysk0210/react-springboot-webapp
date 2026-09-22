@@ -9,6 +9,8 @@
 ![Java](https://img.shields.io/badge/Java-25-ED8B00?logo=openjdk&logoColor=white)
 ![Spring Boot](https://img.shields.io/badge/Spring%20Boot-4.1.1-6DB33F?logo=springboot&logoColor=white)
 ![Spring Security](https://img.shields.io/badge/Spring%20Security-7.1.0-6DB33F?logo=springsecurity&logoColor=white)
+![Maven](https://img.shields.io/badge/Maven-3.9.14-C71A36?logo=apachemaven&logoColor=white)
+![H2](https://img.shields.io/badge/H2-Database-09476B?logo=h2database&logoColor=white)
 
 
 > **React 19 × Spring Boot 4** 打造的完整電商解決方案 — 從前端互動體驗、Stripe 金流整合，到後端安全架構與多環境部署，每一層都按業界標準設計。
